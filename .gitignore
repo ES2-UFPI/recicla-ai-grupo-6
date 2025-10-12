@@ -1,0 +1,16 @@
+# Ignore virtual environment
+venv/
+.venv/
+
+# Common Python ignores
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# VSCode and other IDE configs
+.vscode/
+.idea/
+
+# Environment variables
+.env
