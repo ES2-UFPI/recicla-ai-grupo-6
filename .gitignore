@@ -1,19 +1,19 @@
-# Virtual environment
-.venv/
-venv/
 
-# Python
+# Arquivos do Python
 __pycache__/
+*.pyc
 *.py[cod]
 *.pyo
 
-# Django
-*.log
-db.sqlite3
+# Ambiente Virtual
+.venv/
+venv/
+env/
 
-# VSCode, PyCharm, etc.
+# Banco de Dados Local
+db.sqlite3
+*.log
+
+# Arquivos de IDE
 .vscode/
 .idea/
-
-# Environment variables
-.env
