@@ -1,14 +1,17 @@
-# Ignore virtual environment
-venv/
+# Virtual environment
 .venv/
+venv/
 
-# Common Python ignores
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
-*.pyd
 
-# VSCode and other IDE configs
+# Django
+*.log
+db.sqlite3
+
+# VSCode, PyCharm, etc.
 .vscode/
 .idea/
 
