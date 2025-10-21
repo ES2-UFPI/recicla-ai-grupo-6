@@ -71,44 +71,50 @@ class Produtor(models.Model):
 
 
 class SolicitacaoColeta(models.Model):
-    class Status(models.TextChoices):
-        SOLICITADA = "SOLICITADA", "Solicitada"
-        ACEITA = "ACEITA", "Aceita"
-        CANCELADA = "CANCELADA", "Cancelada"
-        CONFIRMADA = "CONFIRMADA", "Confirmada"
+    STATUS_CHOICES = [
+        ('SOLICITADA', 'Solicitada'),
+        ('ACEITA', 'Aceita'),
+        ('CANCELADA', 'Cancelada'),
+        ('CONFIRMADA', 'Confirmada'),
+        ('COLETADO', 'Coletado'), 
+        ('EM ROTA', 'Em Rota'),   
+        ('AGUARDANDO COLETOR', 'Aguardando Coletor'), 
+    ]
 
-    id = models.AutoField(primary_key=True)
-
-    produtor = models.ForeignKey(
-        Produtor,
-        on_delete=models.CASCADE,
-        db_column="produtor_id",
-        related_name="solicitacoes",
-    )
-    coletor = models.ForeignKey(
-        Coletor,
-        on_delete=models.SET_NULL,
-        db_column="coletor_id",
-        related_name="coletas",
-        blank=True,
-        null=True,
-    )
-
-    # DB has DEFAULT CURRENT_TIMESTAMP; aligning with Django behavior:
-    data_criacao = models.DateTimeField(default=timezone.now)
+    produtor = models.ForeignKey(Produtor, on_delete=models.CASCADE, related_name="solicitacoes") 
+    coletor = models.ForeignKey(Coletor, on_delete=models.SET_NULL, null=True, blank=True, related_name="coletas") 
+    
+    data_criacao = models.DateTimeField(auto_now_add=True)
     data_inicio_coleta = models.DateField()
     data_fim_coleta = models.DateField()
-    horario_inicio = models.TimeField(blank=True, null=True)
-    horario_fim = models.TimeField(blank=True, null=True)
+    horario_inicio = models.TimeField(null=True, blank=True)
+    horario_fim = models.TimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SOLICITADA')
+    
 
-    status = models.CharField(
-        max_length=20,
-        choices=Status.choices,
-        default=Status.SOLICITADA,
-    )
-
-    class Meta:
-        db_table = "solicitacao_coleta"
+    observacoes = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return f"Solicitação #{self.id} — {self.get_status_display()}"
+        nome_produtor = self.produtor.nome if self.produtor else 'Produtor Desconhecido'
+        return f"Solicitação #{self.id} por {nome_produtor} - Status: {self.get_status_display()}"
+
+
+# --- MODELO PARA OS ITENS DA COLETA ---
+
+class ItemColeta(models.Model):
+    CATEGORIA_CHOICES = [
+        ('PLASTICO', 'Plástico'),
+        ('PAPEL', 'Papel'),
+        ('VIDRO', 'Vidro'),
+        ('METAL', 'Metal'),
+        ('ORGANICO', 'Orgânico'),
+        ('ELETRONICO', 'Eletrônico'),
+        ('OUTRO', 'Outro'),
+    ]
+    # related_name='itens' permite acessar os itens a partir de uma solicitação (ex: solicitacao.itens.all())
+    solicitacao = models.ForeignKey(SolicitacaoColeta, related_name='itens', on_delete=models.CASCADE)
+    descricao = models.CharField(max_length=255) 
+    categoria = models.CharField(max_length=50, choices=CATEGORIA_CHOICES)
+
+    def __str__(self):
+        return f"{self.descricao} ({self.get_categoria_display()}) - Solicitação #{self.solicitacao.id}"

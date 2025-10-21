@@ -29,8 +29,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-GDAL_LIBRARY_PATH = r""   # find actual directory with the bin of GDAL
-GEOS_LIBRARY_PATH = r""
+GDAL_LIBRARY_PATH = r"C:\Users\alexs\sprint1ES\venv\Lib\site-packages\osgeo\gdal.dll"
+GEOS_LIBRARY_PATH = r"C:\Users\alexs\sprint1ES\venv\Lib\site-packages\osgeo\geos_c.dll"
 
 
 # Application definition
@@ -44,10 +44,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.gis',
     'aplicativo_web',
-    'django.contrib.gis',
-    'aplicativo_web',
-    'rest_framework',        # Adicionar
-    'rest_framework_simplejwt', # Adicionar
+    'rest_framework',
+    'rest_framework_simplejwt',
 ]
 
 
@@ -142,3 +140,12 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 print("DEBUG STATICFILES_DIRS:", [str(p) for p in STATICFILES_DIRS]) # remove
+
+REST_FRAMEWORK = {
+    # 'DEFAULT_AUTHENTICATION_CLASSES': (
+    #     'rest_framework_simplejwt.authentication.JWTAuthentication',
+    # )
+    'DEFAULT_PERMISSION_CLASSES': (
+         'rest_framework.permissions.AllowAny', # Permite acesso por padrão
+     )
+}
