@@ -7,8 +7,8 @@ Endpoint: /login/
 Método: POST
 Corpo da Requisição:
 {
-  "email": "usuario_cadastrado@email.com",
-  "password": "senhaDoUsuario"
+  "email": "joao.silva1@email.com",
+  "password": "senhaSegura123!"
 }
 
 Resposta de Sucesso (200 OK):
@@ -124,3 +124,28 @@ Resposta de Erro (400 Bad Request):
 {
   "cnpj": [ "cooperativa with this cnpj already exists." ]
 }
+
+
+--------------------------------------------------------------------------
+Solicitar entrega:
+Tipo:post
+http://127.0.0.1:8000/api/coletas/solicitar/
+{
+    "data_inicio_coleta": "2025-10-25",
+    "data_fim_coleta": "2025-10-26",
+    "horario_inicio": "09:00:00", 
+    "horario_fim": "17:00:00",
+    "observacoes": "Deixar na portaria. Material frágil.",
+    "itens": [
+        { "descricao": "5 Garrafas PET", "categoria": "PLASTICO" },
+        { "descricao": "1 Caixa de Papelão Grande", "categoria": "PAPEL" }
+    ]
+}
+
+---------------------------------------------------------------------------
+
+Minhas coletas:
+Tipo: get
+http://127.0.0.1:8000/api/coletas/minhas/
+corpo:none
+
