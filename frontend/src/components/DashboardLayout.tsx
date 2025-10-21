@@ -1,7 +1,7 @@
 import React from 'react';
 import './DashboardLayout.css'; // O CSS para o nosso novo layout
 import { FaRecycle, FaSignOutAlt, FaPlusCircle, FaListAlt, FaMapMarkedAlt, FaChartBar, FaUsers } from 'react-icons/fa';
-
+import { NavLink } from 'react-router-dom'; // Importa o NavLink
 // Definindo as propriedades que o layout receberá
 interface DashboardLayoutProps {
   user: {
@@ -14,33 +14,35 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ user, onLogout, children }) => {
 
-  const renderNavLinks = () => {
-    switch (user.type) {
-      case 'produtor':
-        return (
-          <>
-            <a href="#" className="nav-link active"><FaPlusCircle /> Solicitar Coleta</a>
-            <a href="#" className="nav-link"><FaListAlt /> Minhas Solicitações</a>
-          </>
-        );
-      case 'coletor':
-        return (
-          <>
-            <a href="#" className="nav-link active"><FaMapMarkedAlt /> Coletas Disponíveis</a>
-            <a href="#" className="nav-link"><FaListAlt /> Minhas Coletas</a>
-          </>
-        );
-      case 'cooperativa':
-        return (
-          <>
-            <a href="#" className="nav-link active"><FaChartBar /> Dashboard</a>
-            <a href="#" className="nav-link"><FaUsers /> Gerenciar Coletores</a>
-          </>
-        );
-      default:
-        return null;
-    }
-  };
+const renderNavLinks = () => {
+  switch (user.type) {
+    case 'produtor':
+      return (
+        <>
+          {/* Usamos NavLink com a prop 'to' para definir o caminho */}
+          {/* A prop 'end' no primeiro link evita que ele fique ativo sempre */}
+          <NavLink to="/" end className="nav-link"><FaPlusCircle /> Solicitar Coleta</NavLink>
+          <NavLink to="/minhas-solicitacoes" className="nav-link"><FaListAlt /> Minhas Solicitações</NavLink>
+        </>
+      );
+    case 'coletor':
+      return (
+        <>
+          <NavLink to="/" end className="nav-link"><FaMapMarkedAlt /> Coletas Disponíveis</NavLink>
+          <NavLink to="/minhas-coletas" className="nav-link"><FaListAlt /> Minhas Coletas</NavLink>
+        </>
+      );
+    case 'cooperativa':
+      return (
+        <>
+          <NavLink to="/" end className="nav-link"><FaChartBar /> Dashboard</NavLink>
+          <NavLink to="/gerenciar-coletores" className="nav-link"><FaUsers /> Gerenciar Coletores</NavLink>
+        </>
+      );
+    default:
+      return null;
+  }
+};
 
   return (
     <div className="dashboard-page-container">
