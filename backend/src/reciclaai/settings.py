@@ -44,7 +44,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.gis',
     'aplicativo_web',
+    'django.contrib.gis',
+    'aplicativo_web',
+    'rest_framework',        # Adicionar
+    'rest_framework_simplejwt', # Adicionar
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
