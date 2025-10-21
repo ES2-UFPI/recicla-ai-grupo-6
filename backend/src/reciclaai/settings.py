@@ -29,8 +29,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-GDAL_LIBRARY_PATH = r"C:\Users\RAFAEL\AppData\Local\Programs\OSGeo4W\bin\gdal311.dll"   # find actual directory with the bin of GDAL
-GEOS_LIBRARY_PATH = r"C:\Users\RAFAEL\AppData\Local\Programs\OSGeo4W\bin\geos_c.dll"
+GDAL_LIBRARY_PATH = r""   # find actual directory with the bin of GDAL
+GEOS_LIBRARY_PATH = r""
 
 
 # Application definition
