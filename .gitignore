@@ -1,16 +1,19 @@
-# Ignore virtual environment
-venv/
-.venv/
 
-# Common Python ignores
+# Arquivos do Python
 __pycache__/
 *.pyc
+*.py[cod]
 *.pyo
-*.pyd
 
-# VSCode and other IDE configs
+# Ambiente Virtual
+.venv/
+venv/
+env/
+
+# Banco de Dados Local
+db.sqlite3
+*.log
+
+# Arquivos de IDE
 .vscode/
 .idea/
-
-# Environment variables
-.env
