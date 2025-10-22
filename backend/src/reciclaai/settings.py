@@ -88,9 +88,9 @@ WSGI_APPLICATION = 'reciclaai.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.contrib.gis.db.backends.postgis",
-        "NAME": "recicla-ai",
-        "USER": "postgres",
-        "PASSWORD": "root",
+        "NAME": "",
+        "USER": "",
+        "PASSWORD": "",
         "HOST": "127.0.0.1",
         "PORT": "5432",
     }
