@@ -4,6 +4,7 @@ from django.db import models
 # models.py
 from django.contrib.gis.db import models
 from django.utils import timezone
+from django.urls import reverse
 
 
 class Coletor(models.Model):
@@ -46,6 +47,9 @@ class Cooperativa(models.Model):
 
     def __str__(self):
         return self.nome_empresa
+    
+    def get_absolute_url(self):
+        return reverse("products:product-detail", kwargs={"id": self.id})
 
 
 class Produtor(models.Model):

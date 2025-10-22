@@ -29,8 +29,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-GDAL_LIBRARY_PATH = r"C:\Users\Francisco Rafael\AppData\Local\Programs\OSGeo4W\bin\gdal311.dll"
-GEOS_LIBRARY_PATH = r"C:\Users\Francisco Rafael\AppData\Local\Programs\OSGeo4W\bin\geos_c.dll"
+GDAL_LIBRARY_PATH = r""   # find actual directory with the bin of GDAL
+GEOS_LIBRARY_PATH = r""
 
 
 
@@ -67,7 +67,7 @@ ROOT_URLCONF = 'reciclaai.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, "templates")],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -88,9 +88,9 @@ WSGI_APPLICATION = 'reciclaai.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.contrib.gis.db.backends.postgis",
-        "NAME": "recicla-ai",
-        "USER": "postgres",
-        "PASSWORD": "root",
+        "NAME": "",
+        "USER": "",
+        "PASSWORD": "",
         "HOST": "127.0.0.1",
         "PORT": "5432",
     }
@@ -142,7 +142,6 @@ STATICFILES_DIRS = [
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-print("DEBUG STATICFILES_DIRS:", [str(p) for p in STATICFILES_DIRS]) # remove
 
 REST_FRAMEWORK = {
     # 'DEFAULT_AUTHENTICATION_CLASSES': (

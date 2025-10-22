@@ -2,6 +2,7 @@
 
 from django.http import FileResponse, Http404, HttpResponse
 from django.conf import settings
+from django.shortcuts import render
 from pathlib import Path
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -215,3 +216,11 @@ class MinhasSolicitacoesView(generics.ListAPIView):
         except Exception as e:
             print(f"Erro ao buscar solicitações: {e}")
             return SolicitacaoColeta.objects.none()
+
+
+def escolha_cooperativa_view(request):
+    queryset = Cooperativa.objects.all()
+    context = {
+        "object_list": queryset
+    }
+    return render(request, "aplicativo_web/cooperativa_list.html", context)
