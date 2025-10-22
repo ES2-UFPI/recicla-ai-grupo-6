@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../apiFetch';
 import './HomeContent.css'; // Usaremos o mesmo CSS e adicionaremos novos estilos
 
 // Lista de CATEGORIAS (não mais de materiais)
@@ -21,7 +23,7 @@ interface ItemDeColeta {
 
 const ProdutorHome = () => {
   // --- Estados para o NOVO formulário ---
-  
+
   // Estados para o item que está sendo ADICIONADO AGORA
   const [itemDescricao, setItemDescricao] = useState('');
   const [itemCategoria, setItemCategoria] = useState(CATEGORIAS_DISPONIVEIS[0]);
@@ -49,7 +51,7 @@ const ProdutorHome = () => {
     };
 
     setListaItens(prevLista => [...prevLista, novoItem]); // Adiciona o novo item à lista
-    
+
     // Limpa os campos de input
     setItemDescricao('');
     setItemCategoria(CATEGORIAS_DISPONIVEIS[0]);
@@ -59,6 +61,7 @@ const ProdutorHome = () => {
   const handleRemoveItem = (idParaRemover: string) => {
     setListaItens(prevLista => prevLista.filter(item => item.id !== idParaRemover));
   };
+  const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,37 +72,56 @@ const ProdutorHome = () => {
       return;
     }
 
-    const solicitacaoDeColeta = {
-      itens: listaItens,
+    // monta payload conforme contrato da API
+    const inicio = new Date();
+    const fim = new Date(inicio.getTime() + 3 * 60 * 60 * 1000); // +3h padrão
+
+    const payload = {
+      inicio_coleta: inicio.toISOString(),
+      fim_coleta: fim.toISOString(),
       observacoes: observacoes,
-      dataSolicitacao: new Date().toISOString()
+      itens: listaItens.map(it => ({ nome_residuo: it.descricao, quantidade: 1 }))
     };
 
-    // --- SIMULAÇÃO DA CHAMADA DE API ---
-    console.log("NOVA SOLICITAÇÃO DE COLETA:", solicitacaoDeColeta);
-    
-    setFeedback(`Solicitação com ${listaItens.length} tipo(s) de item enviada com sucesso!`);
-    
-    // Limpar o formulário
-    setListaItens([]);
-    setObservacoes('');
+    console.log('Enviando solicitação:', payload);
+
+    api.request('/api/coletas/solicitar/', 'POST', payload)
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        console.log('/api/coletas/solicitar/ ->', res.status, data);
+        if (res.status === 201 || res.status === 200) {
+          setFeedback(`Solicitação enviada com sucesso (${listaItens.length} item(s)).`);
+          setListaItens([]);
+          setObservacoes('');
+          // redireciona para a lista de solicitações
+          navigate('/minhas-solicitacoes');
+        } else if (res.status === 400) {
+          setFeedback('Erro: verifique os dados enviados.');
+        } else {
+          setFeedback('Erro desconhecido ao enviar solicitação.');
+        }
+      })
+      .catch((err) => {
+        console.error('Erro ao enviar solicitação:', err);
+        setFeedback('Falha ao conectar ao servidor.');
+      });
   };
 
   return (
     <div className="home-content">
       <h1>Solicitar Nova Coleta</h1>
       <p>Adicione os itens que você separou, um por um, e classifique-os.</p>
-      
+
       <form className="coleta-form" onSubmit={handleSubmit}>
-        
+
         {/* Seção 1: Adicionar Itens */}
         <fieldset className="form-section">
           <legend>1. Adicionar Itens</legend>
           <div className="add-item-form">
             <div className="form-group-vertical" style={{ flexGrow: 2 }}>
               <label htmlFor="itemDescricao">Descrição do Item (ex: "5 garrafas PET", "1 caixa de papelão")</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 id="itemDescricao"
                 value={itemDescricao}
                 onChange={(e) => setItemDescricao(e.target.value)}
@@ -107,9 +129,9 @@ const ProdutorHome = () => {
             </div>
             <div className="form-group-vertical" style={{ flexGrow: 1 }}>
               <label htmlFor="itemCategoria">Categoria</label>
-              <select 
-                id="itemCategoria" 
-                value={itemCategoria} 
+              <select
+                id="itemCategoria"
+                value={itemCategoria}
                 onChange={(e) => setItemCategoria(e.target.value)}
               >
                 {CATEGORIAS_DISPONIVEIS.map(cat => (
@@ -148,7 +170,7 @@ const ProdutorHome = () => {
           <legend>3. Detalhes Finais</legend>
           <div className="form-group-vertical">
             <label htmlFor="observacoes">Observações (opcional):</label>
-            <textarea 
+            <textarea
               id="observacoes"
               placeholder="Ex: Sacos pesados, deixar na portaria, item frágil..."
               value={observacoes}

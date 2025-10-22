@@ -25,7 +25,7 @@ Resposta de Erro (401 Unauthorized):
 ---------------------------------------------------------------------------------
 2. Cadastro de Usuários
 2.1 Cadastro de Produtor
-Endpoint: /register/producer/
+Endpoint: http://127.0.0.1:8000/api/register/producer/
 
 Método: POST
 Descrição: Cria um novo usuário do tipo Produtor.
@@ -63,7 +63,7 @@ Resposta de Erro (400 Bad Request):
   "rua": [ "This field is required." ]
 }
 2.2 Cadastro de Coletor
-Endpoint: /register/collector/
+Endpoint: http://127.0.0.1:8000/api/register/collector/
 Método: POST
 Descrição: Cria um novo usuário do tipo Coletor.
 Corpo da Requisição:
@@ -90,8 +90,9 @@ Resposta de Erro (400 Bad Request):
 {
   "cpf": [ "coletor with this cpf already exists." ]
 }
+
 2.3 Cadastro de Cooperativa
-Endpoint: /register/cooperative/
+Endpoint: http://127.0.0.1:8000/api/register/cooperative/
 Método: POST
 Descrição: Cria um novo usuário do tipo Cooperativa.
 Corpo da Requisição:
@@ -131,15 +132,13 @@ Solicitar entrega:
 Tipo:post
 http://127.0.0.1:8000/api/coletas/solicitar/
 {
-    "data_inicio_coleta": "2025-10-25",
-    "data_fim_coleta": "2025-10-26",
-    "horario_inicio": "09:00:00", 
-    "horario_fim": "17:00:00",
-    "observacoes": "Deixar na portaria. Material frágil.",
-    "itens": [
-        { "descricao": "5 Garrafas PET", "categoria": "PLASTICO" },
-        { "descricao": "1 Caixa de Papelão Grande", "categoria": "PAPEL" }
-    ]
+  "inicio_coleta": "2025-10-25T09:00:00",
+  "fim_coleta": "2025-10-25T12:00:00",
+  "observacoes": "Deixar na portaria. Material frágil.",
+  "itens": [
+    { "nome_residuo": "5 Garrafas PET", "quantidade": 5 },
+    { "nome_residuo": "1 Caixa de Papelão Grande", "quantidade": 1 }
+  ]
 }
 
 ---------------------------------------------------------------------------

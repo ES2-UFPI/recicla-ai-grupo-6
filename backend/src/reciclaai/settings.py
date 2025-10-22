@@ -47,10 +47,12 @@ INSTALLED_APPS = [
     'aplicativo_web',
     'rest_framework',
     'rest_framework_simplejwt',
+    'corsheaders',
 ]
 
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -86,9 +88,9 @@ WSGI_APPLICATION = 'reciclaai.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.contrib.gis.db.backends.postgis",
-        "NAME": "recicla_ai",
-        "USER": "recicla_ai_user",
-        "PASSWORD": "1234",
+        "NAME": "recicla-ai",
+        "USER": "postgres",
+        "PASSWORD": "root",
         "HOST": "127.0.0.1",
         "PORT": "5432",
     }
@@ -149,3 +151,7 @@ REST_FRAMEWORK = {
          'rest_framework.permissions.AllowAny', # Permite acesso por padrão
      )
 }
+
+# CORS (development helper)
+# Install with: pip install django-cors-headers
+CORS_ALLOW_ALL_ORIGINS = True
