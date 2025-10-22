@@ -6,22 +6,52 @@ from .models import Produtor, Coletor, Cooperativa, SolicitacaoColeta, ItemColet
 class ProdutorRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Produtor
-        fields = '__all__'
+        # explicitar campos evita que mudanças não esperadas causem erros
+        fields = [
+            'id', 'nome', 'email', 'senha', 'telefone', 'cpf',
+            'cep', 'rua', 'numero', 'bairro', 'cidade', 'estado', 'geom'
+        ]
         extra_kwargs = {'senha': {'write_only': True}}
+
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except Exception as e:
+            # converte exceções inesperadas em ValidationError para evitar 500
+            raise serializers.ValidationError({'detail': str(e)})
 
 
 class ColetorRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Coletor
-        fields = '__all__'
+        # explicit fields conforme model
+        fields = [
+            'id', 'nome', 'email', 'senha', 'telefone', 'cpf',
+            'cep', 'cidade', 'estado', 'geom'
+        ]
         extra_kwargs = {'senha': {'write_only': True}}
+
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except Exception as e:
+            raise serializers.ValidationError({'detail': str(e)})
 
 
 class CooperativaRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cooperativa
-        fields = '__all__'
+        fields = [
+            'id', 'nome_empresa', 'email', 'senha', 'telefone', 'cnpj',
+            'cep', 'rua', 'numero', 'bairro', 'cidade', 'estado', 'geom'
+        ]
         extra_kwargs = {'senha': {'write_only': True}}
+
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except Exception as e:
+            raise serializers.ValidationError({'detail': str(e)})
 
 
 class LoginSerializer(serializers.Serializer):

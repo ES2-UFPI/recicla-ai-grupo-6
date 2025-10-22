@@ -17,16 +17,16 @@ type User = {
 };
 
 function App() {
-  // Para testar, vamos começar com um usuário "produtor" já logado!
-  const [loggedInUser, setLoggedInUser] = useState<User | null>({ name: 'Carlos Santana', type: 'produtor' });
-  
+  // Começamos sem usuário logado — AuthScreen fará login
+  const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
+
   // Função para fazer logout
   const handleLogout = () => {
     setLoggedInUser(null);
   };
-  
-  // No futuro, a tela de login vai chamar esta função
-  // const handleLogin = (user: User) => setLoggedInUser(user);
+
+  // A tela de login chamará esta função quando o login for bem-sucedido
+  const handleLogin = (user: User) => setLoggedInUser(user);
 
   /**
    * Esta função renderiza o layout do dashboard e decide qual conteúdo 
@@ -74,17 +74,17 @@ function App() {
     <BrowserRouter>
       {/* Este é o roteador principal da aplicação */}
       <Routes>
-        
+
         {/* Rota para a página de Login */}
         <Route path="/login" element={
-          !loggedInUser ? <AuthScreen /> : <Navigate to="/" />
-        }/>
-        
+          !loggedInUser ? <AuthScreen onLogin={handleLogin} /> : <Navigate to="/" />
+        } />
+
         {/* Rota "coringa" para o dashboard */}
         {/* O "/*" é o que permite que as rotas aninhadas dentro de renderDashboard() funcionem */}
         <Route path="/*" element={
           loggedInUser ? renderDashboard() : <Navigate to="/login" />
-        }/>
+        } />
 
       </Routes>
     </BrowserRouter>
