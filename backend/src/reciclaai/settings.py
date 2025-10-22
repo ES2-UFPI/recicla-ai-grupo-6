@@ -29,8 +29,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-GDAL_LIBRARY_PATH = r"C:\Users\alexs\sprint1ES\venv\Lib\site-packages\osgeo\gdal.dll"
-GEOS_LIBRARY_PATH = r"C:\Users\alexs\sprint1ES\venv\Lib\site-packages\osgeo\geos_c.dll"
+GDAL_LIBRARY_PATH = r""   # find actual directory with the bin of GDAL
+GEOS_LIBRARY_PATH = r""
+
 
 
 # Application definition
@@ -64,7 +65,7 @@ ROOT_URLCONF = 'reciclaai.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, "templates")],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -139,7 +140,6 @@ STATICFILES_DIRS = [
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-print("DEBUG STATICFILES_DIRS:", [str(p) for p in STATICFILES_DIRS]) # remove
 
 REST_FRAMEWORK = {
     # 'DEFAULT_AUTHENTICATION_CLASSES': (
