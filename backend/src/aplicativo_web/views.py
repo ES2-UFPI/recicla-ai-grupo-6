@@ -25,15 +25,20 @@ from .models import Produtor, Coletor, Cooperativa, SolicitacaoColeta
 from .permissions import IsProdutor
 
 # --- Views Originais (Servir Frontend e Teste) ---
+
+
 def spa(request):
     """
     Serve o arquivo index.html do build do frontend React.
     Qualquer rota que não seja '/api/' cairá aqui.
     """
-    index = Path(settings.BASE_DIR.parent.parent, "frontend", "build", "index.html")
+    index = Path(settings.BASE_DIR.parent.parent,
+                 "frontend", "build", "index.html")
     if not index.exists():
-        raise Http404("Frontend build not found. Run `npm run build` in /frontend.")
+        raise Http404(
+            "Frontend build not found. Run `npm run build` in /frontend.")
     return FileResponse(open(index, "rb"))
+
 
 def index(request):
     """
@@ -42,6 +47,8 @@ def index(request):
     return HttpResponse("Olá, mundo. Você está no índice da API.")
 
 # --- Views de Cadastro ---
+
+
 class ProdutorRegisterView(generics.CreateAPIView):
     """
     Endpoint para cadastrar um novo Produtor.
@@ -49,12 +56,14 @@ class ProdutorRegisterView(generics.CreateAPIView):
     serializer_class = ProdutorRegistrationSerializer
     permission_classes = [permissions.AllowAny]
 
+
 class ColetorRegisterView(generics.CreateAPIView):
     """
     Endpoint para cadastrar um novo Coletor.
     """
     serializer_class = ColetorRegistrationSerializer
     permission_classes = [permissions.AllowAny]
+
 
 class CooperativaRegisterView(generics.CreateAPIView):
     """
@@ -64,6 +73,8 @@ class CooperativaRegisterView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
 
 # --- View de Login Customizada ---
+
+
 class CustomLoginView(APIView):
     """
     Endpoint customizado para login.
@@ -108,6 +119,8 @@ class CustomLoginView(APIView):
         )
 
 # --- View para Criar Solicitação de Coleta ---
+
+
 class SolicitarColetaView(generics.CreateAPIView):
     """
     Endpoint para Produtores criarem uma nova Solicitação de Coleta.
@@ -123,19 +136,24 @@ class SolicitarColetaView(generics.CreateAPIView):
         try:
             auth_payload = getattr(self.request, 'auth_payload', None)
             if not auth_payload or 'user_id' not in auth_payload:
-                 raise AttributeError
+                raise AttributeError
 
             user_id = auth_payload.get('user_id')
             produtor_profile = Produtor.objects.get(pk=user_id)
             serializer.save(produtor=produtor_profile)
         except Produtor.DoesNotExist:
-            raise serializers.ValidationError({"detail": "Perfil de Produtor não encontrado para este usuário."})
+            raise serializers.ValidationError(
+                {"detail": "Perfil de Produtor não encontrado para este usuário."})
         except AttributeError:
-            raise serializers.ValidationError({"detail": "Informação do usuário (user_id) não encontrada na autenticação."})
+            raise serializers.ValidationError(
+                {"detail": "Informação do usuário (user_id) não encontrada na autenticação."})
         except Exception as e:
-            raise serializers.ValidationError({"detail": f"Erro inesperado ao associar produtor: {e}"})
+            raise serializers.ValidationError(
+                {"detail": f"Erro inesperado ao associar produtor: {e}"})
 
 # --- View para Listar Minhas Solicitações ---
+
+
 class MinhasSolicitacoesView(generics.ListAPIView):
     """
     Endpoint para Produtores listarem suas próprias Solicitações de Coleta.
@@ -155,7 +173,7 @@ class MinhasSolicitacoesView(generics.ListAPIView):
 
             user_id = auth_payload.get('user_id')
             produtor_profile = Produtor.objects.get(pk=user_id)
-            return SolicitacaoColeta.objects.filter(produtor=produtor_profile).order_by('-data_criacao')
+            return SolicitacaoColeta.objects.filter(produtor=produtor_profile).order_by('-id')
         except Produtor.DoesNotExist:
             return SolicitacaoColeta.objects.none()
         except AttributeError:
