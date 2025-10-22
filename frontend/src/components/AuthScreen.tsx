@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './AuthScreen.css';
 import { FaEnvelope, FaLock, FaRecycle, FaUser, FaIdCard, FaMapMarkerAlt, FaCity, FaHashtag, FaBuilding, FaPhone, FaTruck, FaWarehouse, FaUsers } from 'react-icons/fa';
+import api from '../apiFetch';
 
 type UserType = 'produtor' | 'coletor' | 'cooperativa';
 
@@ -11,7 +12,11 @@ const userDescriptions: Record<UserType, string> = {
   cooperativa: "Destinado a cooperativas e centros de triagem que recebem e processam os materiais coletados."
 };
 
-const AuthScreen = () => {
+type Props = {
+  onLogin?: (user: { name: string; type: 'produtor' | 'coletor' | 'cooperativa' }) => void;
+};
+
+const AuthScreen = (props: Props) => {
   const [isLogin, setIsLogin] = useState(true);
   const [userType, setUserType] = useState<UserType>('produtor');
 
@@ -29,6 +34,13 @@ const AuthScreen = () => {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [cnpj, setCnpj] = useState('');
+  const [feedback, setFeedback] = useState('');
+  const [errors, setErrors] = useState<Record<string, any> | null>(null);
+
+  // Base URL da API: usa REACT_APP_API_URL se definido, caso contrário
+  // quando em dev (CRA no localhost:3000) direciona para o backend local 127.0.0.1:8000
+  const API_BASE = (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim()) ||
+    (window.location.hostname === 'localhost' && window.location.port === '3000' ? 'http://127.0.0.1:8000' : '');
 
   const toggleForm = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -39,7 +51,34 @@ const AuthScreen = () => {
     // ... (Nenhuma alteração na função handleSubmit)
     e.preventDefault();
     if (isLogin) {
-      console.log("Tentativa de Login:", { email, password });
+      setFeedback('Processando login...');
+      setErrors(null);
+      // chama helper de login
+      api.login(email, password)
+        .then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          console.log('Resposta login:', res.status, data);
+          if (res.status === 200) {
+            const access = data.access;
+            const user_type = data.user_type || 'produtor';
+            api.setToken(access);
+            setFeedback('Login realizado! Redirecionando...');
+            setErrors(null);
+            // avisa App sobre login
+            if (props.onLogin) props.onLogin({ name: email, type: user_type });
+          } else if (res.status === 401) {
+            setFeedback('Credenciais inválidas.');
+            setErrors(data || { detail: 'Unauthorized' });
+          } else {
+            setFeedback('Erro no login: ' + res.status);
+            setErrors(data || null);
+          }
+        })
+        .catch((err) => {
+          console.error('Erro no login:', err);
+          setFeedback('Falha ao conectar ao servidor.');
+        });
+      return;
     } else {
       if (password !== confirmPassword) {
         alert("As senhas não coincidem!");
@@ -59,7 +98,79 @@ const AuthScreen = () => {
           break;
       }
       const registrationData = { ...commonData, ...specificData };
-      console.log("Enviando para cadastro:", registrationData);
+
+      // Monta endpoint e payload conforme backend espera (campos em português)
+      let endpoint = `${API_BASE || ''}/api/register/producer/`;
+      const payload: Record<string, any> = {};
+      if (userType === 'produtor') {
+        endpoint = `${API_BASE || ''}/api/register/producer/`;
+        payload.nome = name;
+        payload.email = email;
+        payload.senha = password;
+        payload.telefone = phone;
+        payload.cpf = cpf;
+        payload.cep = cep;
+        payload.rua = street;
+        payload.numero = number;
+        payload.bairro = neighborhood;
+        payload.cidade = city;
+        payload.estado = state;
+      } else if (userType === 'coletor') {
+        endpoint = `${API_BASE || ''}/api/register/collector/`;
+        payload.nome = name;
+        payload.email = email;
+        payload.senha = password;
+        payload.telefone = phone;
+        payload.cpf = cpf;
+        payload.cep = cep;
+        payload.cidade = city;
+        payload.estado = state;
+      } else if (userType === 'cooperativa') {
+        endpoint = `${API_BASE || ''}/api/register/cooperative/`;
+        payload.nome_empresa = name;
+        payload.email = email;
+        payload.senha = password;
+        payload.telefone = phone;
+        payload.cnpj = cnpj;
+        payload.cep = cep;
+        payload.rua = street;
+        payload.numero = number;
+        payload.bairro = neighborhood;
+        payload.cidade = city;
+        payload.estado = state;
+      }
+
+      setFeedback('Processando...');
+      setErrors(null);
+      console.log('Cadastro: endpoint=', endpoint, 'payload=', payload);
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          console.log('Resposta cadastro:', res.status, data);
+          if (res.status === 201 || res.status === 200) {
+            setFeedback('Cadastro realizado com sucesso!');
+            setErrors(null);
+            // voltar para login
+            setIsLogin(true);
+            // limpar campos
+            setName(''); setEmail(''); setPassword(''); setConfirmPassword(''); setPhone('');
+            setCpf(''); setCep(''); setStreet(''); setNumber(''); setNeighborhood(''); setCity(''); setState(''); setCnpj('');
+          } else if (res.status === 400) {
+            setFeedback('Erros no formulário. Veja abaixo.');
+            setErrors(data || { detail: 'Bad request' });
+          } else {
+            setFeedback('Erro desconhecido: ' + res.status);
+            setErrors(data || null);
+          }
+        })
+        .catch((err) => {
+          console.error('Erro no cadastro:', err);
+          setFeedback('Falha ao conectar ao servidor.');
+        });
     }
   };
 
@@ -136,6 +247,19 @@ const AuthScreen = () => {
             )}
 
             <button type="submit" className="login-btn">{isLogin ? 'Entrar' : 'Criar Conta'}</button>
+
+            {feedback && <p className="feedback-message">{feedback}</p>}
+
+            {errors && (
+              <div className="error-box">
+                <strong>Erros:</strong>
+                <ul>
+                  {Object.entries(errors).map(([field, msgs]) => (
+                    <li key={field}><strong>{field}:</strong> {Array.isArray(msgs) ? msgs.join(' | ') : String(msgs)}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div className="register-link">
               {isLogin ? 'Não tem conta? ' : 'Já tem uma conta? '}

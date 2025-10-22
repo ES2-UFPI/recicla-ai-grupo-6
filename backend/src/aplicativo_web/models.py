@@ -12,7 +12,7 @@ class Coletor(models.Model):
     email = models.CharField(max_length=100, unique=True)
     senha = models.CharField(max_length=255)
     telefone = models.CharField(max_length=20, blank=True, null=True)
-    cpf = models.CharField(max_length=14, unique=True)
+    cpf = models.CharField(max_length=14, unique=True, db_column='cpf_cnpj')
     cep = models.CharField(max_length=9, blank=True, null=True)
     cidade = models.CharField(max_length=100, blank=True, null=True)
     estado = models.CharField(max_length=2, blank=True, null=True)

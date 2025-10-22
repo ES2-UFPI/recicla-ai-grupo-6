@@ -56,6 +56,12 @@ class ProdutorRegisterView(generics.CreateAPIView):
     serializer_class = ProdutorRegistrationSerializer
     permission_classes = [permissions.AllowAny]
 
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().create(request, *args, **kwargs)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ColetorRegisterView(generics.CreateAPIView):
     """
@@ -64,6 +70,12 @@ class ColetorRegisterView(generics.CreateAPIView):
     serializer_class = ColetorRegistrationSerializer
     permission_classes = [permissions.AllowAny]
 
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().create(request, *args, **kwargs)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class CooperativaRegisterView(generics.CreateAPIView):
     """
@@ -71,6 +83,12 @@ class CooperativaRegisterView(generics.CreateAPIView):
     """
     serializer_class = CooperativaRegistrationSerializer
     permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().create(request, *args, **kwargs)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 # --- View de Login Customizada ---
 
@@ -87,20 +105,36 @@ class CustomLoginView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data.get('email')
+        identifier = serializer.validated_data.get('email')
         password = serializer.validated_data.get('password')
         user = None
         user_type = None
 
-        if Produtor.objects.filter(email=email).exists():
-            user = Produtor.objects.get(email=email)
+        # 1) try by email
+        if Produtor.objects.filter(email=identifier).exists():
+            user = Produtor.objects.get(email=identifier)
             user_type = 'produtor'
-        elif Coletor.objects.filter(email=email).exists():
-            user = Coletor.objects.get(email=email)
+        elif Coletor.objects.filter(email=identifier).exists():
+            user = Coletor.objects.get(email=identifier)
             user_type = 'coletor'
-        elif Cooperativa.objects.filter(email=email).exists():
-            user = Cooperativa.objects.get(email=email)
+        elif Cooperativa.objects.filter(email=identifier).exists():
+            user = Cooperativa.objects.get(email=identifier)
             user_type = 'cooperativa'
+        else:
+            # 2) try by document per model:
+            # Produtor -> cpf (model field `cpf`)
+            # Coletor  -> cpf (model field `cpf` maps to db_column 'cpf_cnpj')
+            # Cooperativa -> cnpj
+            if Produtor.objects.filter(cpf=identifier).exists():
+                user = Produtor.objects.get(cpf=identifier)
+                user_type = 'produtor'
+            elif Coletor.objects.filter(cpf=identifier).exists():
+                # Coletor.cpf is mapped to db column 'cpf_cnpj' via models.py
+                user = Coletor.objects.get(cpf=identifier)
+                user_type = 'coletor'
+            elif Cooperativa.objects.filter(cnpj=identifier).exists():
+                user = Cooperativa.objects.get(cnpj=identifier)
+                user_type = 'cooperativa'
 
         if user and user.senha == password:
             refresh = RefreshToken()
