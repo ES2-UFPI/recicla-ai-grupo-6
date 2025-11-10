@@ -11,7 +11,8 @@ import ProdutorHome from './components/ProdutorHome';
 import ColetorHome from './components/ColetorHome';
 import CooperativaHome from './components/CooperativaHome';
 import ProdutorSolicitacoes from './components/ProdutorSolicitacoes'; // A nova página que criámos
-
+import ColetorInventario from './components/ColetorInventario';
+import 'leaflet/dist/leaflet.css'; // Importa o CSS base do Leaflet
 // Definindo os tipos para nosso estado de login
 type User = {
   name: string;
@@ -20,7 +21,7 @@ type User = {
 
 function App() {
   // Começamos sem usuário logado — AuthScreen fará login
-  const [loggedInUser, setLoggedInUser] = useState<User | null>({ name: 'Recicla Teresina', type: 'cooperativa' });
+  const [loggedInUser, setLoggedInUser] = useState<User | null>({ name: 'Recicla Teresina', type: 'coletor' });
 
   // Função para fazer logout
   const handleLogout = () => {
@@ -54,7 +55,7 @@ function App() {
           {loggedInUser.type === 'coletor' && (
             <>
               <Route path="/" element={<ColetorHome />} />
-              {/* <Route path="/minhas-coletas" element={<ColetorMinhasColetas />} /> */}
+              <Route path="/inventario" element={<ColetorInventario />} />
             </>
           )}
 
