@@ -275,3 +275,97 @@
 .coop-card-footer .accept-button {
   width: 100%;
 }
+
+/* --- Estilos para o Loading do GPS --- */
+.loading-overlay {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  z-index: 1001; /* Fica em cima do modal de detalhes */
+}
+
+.loading-spinner {
+  font-size: 4rem;
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+  margin-top: 20px;
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+/* --- Estilos para o Modal do Mapa --- */
+.map-modal-overlay {
+  z-index: 1002; /* Fica em cima de tudo */
+}
+
+.map-modal-content {
+  max-width: 800px; /* Maior, para o mapa */
+}
+
+.map-modal-content h2, .map-modal-content p {
+  text-align: center;
+}
+
+.map-modal-content p {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: -20px;
+  margin-bottom: 20px;
+}
+
+/* Garante que o CSS do plugin de rota apareça */
+.leaflet-routing-container {
+  background-color: white;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.map-modal-content p {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: -20px;
+  margin-bottom: 20px;
+}
+
+/* Garante que o CSS do plugin de rota apareça */
+.leaflet-routing-container {
+  background-color: white;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+/* --- Estilo para o Resumo da Rota (Tempo/Distância) --- */
+.route-summary {
+  font-size: 1.1rem !important; /* !important para sobrepor o <p> padrão */
+  color: #28a745 !important; /* Verde */
+  font-weight: 600 !important;
+  text-align: center;
+  margin-top: -15px !important;
+  margin-bottom: 15px !important
+}
+
+.map-legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #333;
+}
+
+.map-legend img {
+  vertical-align: middle;
+  margin-right: 6px;
+}

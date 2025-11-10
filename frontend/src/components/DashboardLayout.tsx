@@ -1,6 +1,6 @@
 import React from 'react';
 import './DashboardLayout.css'; // O CSS para o nosso novo layout
-import { FaRecycle, FaSignOutAlt, FaPlusCircle, FaListAlt, FaMapMarkedAlt, FaChartBar,FaClipboardList, FaDollarSign, FaUsers } from 'react-icons/fa';
+import { FaRecycle, FaSignOutAlt, FaPlusCircle, FaListAlt, FaMapMarkedAlt, FaChartBar,FaClipboardList, FaDollarSign, FaUsers,FaBoxes } from 'react-icons/fa';
 import { NavLink } from 'react-router-dom'; // Importa o NavLink
 // Definindo as propriedades que o layout receberá
 interface DashboardLayoutProps {
@@ -27,10 +27,11 @@ const renderNavLinks = () => {
       );
     case 'coletor':
       return (
-        <>
-          <NavLink to="/" end className="nav-link"><FaMapMarkedAlt /> Coletas Disponíveis</NavLink>
-          <NavLink to="/minhas-coletas" className="nav-link"><FaListAlt /> Minhas Coletas</NavLink>
-        </>
+              <>
+                <NavLink to="/" end className="nav-link"><FaMapMarkedAlt /> Coletas Disponíveis</NavLink>
+                <NavLink to="/minhas-coletas" className="nav-link"><FaListAlt /> Minhas Coletas</NavLink>
+                <NavLink to="/inventario" className="nav-link"><FaBoxes /> Inventário</NavLink>
+              </>
       );
     case 'cooperativa':
             return (
