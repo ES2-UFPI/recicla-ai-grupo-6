@@ -25,14 +25,18 @@ const renderNavLinks = () => {
           <NavLink to="/minhas-solicitacoes" className="nav-link"><FaListAlt /> Minhas Solicitações</NavLink>
         </>
       );
-    case 'coletor':
-      return (
-              <>
-                <NavLink to="/" end className="nav-link"><FaMapMarkedAlt /> Coletas Disponíveis</NavLink>
-                <NavLink to="/minhas-coletas" className="nav-link"><FaListAlt /> Minhas Coletas</NavLink>
-                <NavLink to="/inventario" className="nav-link"><FaBoxes /> Inventário</NavLink>
-              </>
-      );
+case 'coletor':
+            return (
+                <>
+                    <NavLink to="/" end className="nav-link"><FaMapMarkedAlt /> Coletas Disponíveis</NavLink>
+
+                    {/* LINK NOVO: MINHAS COLETAS (HISTÓRICO) */}
+                    <NavLink to="/historico" className="nav-link"><FaListAlt /> Minhas Coletas</NavLink>
+
+                    <NavLink to="/inventario" className="nav-link"><FaBoxes /> Inventário</NavLink>
+                    {/* Lembrete: O CSS do NavLink faz ele parecer um link ativo se a rota for a certa */}
+                </>
+            );
     case 'cooperativa':
             return (
               <>
