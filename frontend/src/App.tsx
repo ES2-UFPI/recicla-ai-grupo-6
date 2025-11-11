@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import GerenciarEntregas from './components/GerenciarEntregas';
 import GerenciarInteresses from './components/GerenciarInteresses';
+import ColetorHistorico from './components/ColetorHistorico';
 
 // Importando todas as nossas "páginas" e componentes de layout
 import AuthScreen from './components/AuthScreen';
@@ -52,12 +53,18 @@ function App() {
             </>
           )}
 
-          {loggedInUser.type === 'coletor' && (
+         {loggedInUser.type === 'coletor' && (
             <>
-              <Route path="/" element={<ColetorHome />} />
-              <Route path="/inventario" element={<ColetorInventario />} />
+                {/* Rota principal do coletor (Coletas Disponíveis) */}
+                <Route path="/" element={<ColetorHome />} />
+
+                {/* Rota para o Inventário */}
+                <Route path="/inventario" element={<ColetorInventario />} /> 
+
+                {/* Rota para o Histórico de Entregas (Minhas Coletas) */}
+                <Route path="/historico" element={<ColetorHistorico />} /> 
             </>
-          )}
+        )}
 
           {loggedInUser.type === 'cooperativa' && (
                     <>
