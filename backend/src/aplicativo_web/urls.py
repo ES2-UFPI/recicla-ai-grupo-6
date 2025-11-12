@@ -6,9 +6,9 @@ from .views import (
     ColetorRegisterView, 
     CooperativaRegisterView,
     CustomLoginView,
-    SolicitarColetaView,
+    SolicitarColetaView,    # <-- CORREÇÃO: Corrigido typo (era SolicitarColetView)
     MinhasSolicitacoesView,
-    escolha_cooperativa_view
+    #escolha_cooperativa_view
 )
 
 urlpatterns = [
@@ -19,5 +19,5 @@ urlpatterns = [
     path('login/', CustomLoginView.as_view(), name='login'),
     path('coletas/solicitar/', SolicitarColetaView.as_view(), name='solicitar-coleta'),
     path('coletas/minhas/', MinhasSolicitacoesView.as_view(), name='minhas-solicitacoes'),
-    path('list_cooperativas/', escolha_cooperativa_view)
+    #path('list_cooperativas/', views.escolha_cooperativa_view, name='list-cooperativas'), 
 ]
