@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './HomeContent.css';
 import { FaTrash } from 'react-icons/fa6';
+import apiFetch from '../apiFetch';
 
 // ATUALIZADO: Mapeamento de Categorias (apenas as 4 principais)
 // Isso define o que o usuário VÊ (a Unidade)
@@ -13,6 +14,12 @@ const UNIDADES_VISUAIS: Record<string, string> = {
 // Pega apenas os nomes das categorias para o <select>
 const CATEGORIAS_DISPONIVEIS = Object.keys(UNIDADES_VISUAIS);
 
+// Mapeamento das labels visuais para os códigos aceitos pelo backend
+const UNIDADE_LABEL_PARA_CODIGO: Record<string, string> = {
+  'Sacos (Volume)': 'VOLUME',
+  'Unidades': 'UN',
+};
+
 // Interface para um item na lista (frontend)
 interface ItemDeColeta {
   id: string; // ID local, apenas para o React
@@ -23,7 +30,7 @@ interface ItemDeColeta {
 
 const ProdutorHome = () => {
   // --- Estados para o NOVO formulário ---
-  
+
   const [itemCategoria, setItemCategoria] = useState(CATEGORIAS_DISPONIVEIS[0]);
   const [itemQuantidade, setItemQuantidade] = useState(1);
   const [listaItens, setListaItens] = useState<ItemDeColeta[]>([]);
@@ -35,10 +42,10 @@ const ProdutorHome = () => {
   // --- Funções do Formulário ---
 
   const handleAddItem = (e: React.MouseEvent) => {
-    e.preventDefault(); 
-    
+    e.preventDefault();
+
     const unidadeVisual = UNIDADES_VISUAIS[itemCategoria];
-    
+
     const novoItem: ItemDeColeta = {
       id: new Date().toISOString(),
       categoria: itemCategoria,
@@ -47,7 +54,7 @@ const ProdutorHome = () => {
     };
 
     setListaItens(prevLista => [...prevLista, novoItem]);
-    
+
     setItemCategoria(CATEGORIAS_DISPONIVEIS[0]);
     setItemQuantidade(1);
     setFeedback('');
@@ -57,7 +64,7 @@ const ProdutorHome = () => {
     setListaItens(prevLista => prevLista.filter(item => item.id !== idParaRemover));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFeedback('');
 
@@ -66,13 +73,14 @@ const ProdutorHome = () => {
       return;
     }
     if (!inicioColeta || !fimColeta) {
-        setFeedback('Erro: Preencha os horários de início e fim da coleta.');
-        return;
+      setFeedback('Erro: Preencha os horários de início e fim da coleta.');
+      return;
     }
 
     const itensParaAPI = listaItens.map(item => ({
-      nome_residuo: item.categoria,
-      quantidade: item.quantidade 
+      tipo_residuo: item.categoria,
+      quantidade: item.quantidade,
+      unidade_medida: UNIDADE_LABEL_PARA_CODIGO[item.unidade] || item.unidade,
     }));
 
     const solicitacaoDeColeta = {
@@ -82,33 +90,43 @@ const ProdutorHome = () => {
       fim_coleta: fimColeta,
     };
 
-    console.log("NOVA SOLICITAÇÃO DE COLETA (enviando para API):", solicitacaoDeColeta);
-    
-    setFeedback(`Solicitação com ${listaItens.length} tipo(s) de item enviada com sucesso!`);
-    
-    setListaItens([]);
-    setObservacoes('');
-    setInicioColeta('');
-    setFimColeta('');
+    console.log('NOVA SOLICITAÇÃO DE COLETA (enviando para API):', solicitacaoDeColeta);
+
+    try {
+      const resp = await apiFetch.solicitarColeta(solicitacaoDeColeta);
+      if (resp.ok) {
+        setFeedback(`Solicitação com ${listaItens.length} tipo(s) de item enviada com sucesso!`);
+        setListaItens([]);
+        setObservacoes('');
+        setInicioColeta('');
+        setFimColeta('');
+      } else {
+        const data = await resp.json().catch(() => null);
+        const errMsg = data && (data.detail || data.message) ? (data.detail || data.message) : `Status ${resp.status}`;
+        setFeedback(`Erro: Não foi possível enviar a solicitação. ${errMsg}`);
+      }
+    } catch (error: any) {
+      setFeedback(`Erro: Falha ao enviar solicitação. ${error?.message || error}`);
+    }
   };
 
   return (
     <div className="home-content">
       <h1>Solicitar Nova Coleta</h1>
       <p>Adicione os materiais que você separou, um por um, e defina a quantidade.</p>
-      
+
       <form className="coleta-form" onSubmit={handleSubmit}>
-        
+
         {/* Seção 1: Adicionar Itens */}
         <fieldset className="form-section">
           <legend>1. Adicionar Itens</legend>
           <div className="add-item-form">
-            
+
             <div className="form-group-vertical" style={{ flexGrow: 2 }}>
               <label htmlFor="itemCategoria">Categoria do Material</label>
-              <select 
-                id="itemCategoria" 
-                value={itemCategoria} 
+              <select
+                id="itemCategoria"
+                value={itemCategoria}
                 onChange={(e) => setItemCategoria(e.target.value)}
               >
                 {/* Esta lista agora só terá as 4 opções */}
@@ -120,12 +138,15 @@ const ProdutorHome = () => {
 
             <div className="form-group-vertical" style={{ flexGrow: 1 }}>
               <label htmlFor="itemQuantidade">Quantidade</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 id="itemQuantidade"
                 value={itemQuantidade}
                 min="1"
-                onChange={(e) => setItemQuantidade(Math.max(1, parseInt(e.target.value)))}
+                onChange={(e) => {
+                  const parsed = parseInt(e.target.value as string, 10);
+                  setItemQuantidade(Number.isNaN(parsed) ? 1 : Math.max(1, parsed));
+                }}
               />
             </div>
 
@@ -165,7 +186,7 @@ const ProdutorHome = () => {
         {/* Seção 3: Detalhes Finais (COM CAMPOS DE HORA) */}
         <fieldset className="form-section">
           <legend>3. Detalhes Finais</legend>
-          
+
           <div className="form-row-horizontal">
             <div className="form-group-vertical">
               <label htmlFor="inicioColeta">Disponível a partir de:</label>
@@ -179,7 +200,7 @@ const ProdutorHome = () => {
 
           <div className="form-group-vertical" style={{ marginTop: '20px' }}>
             <label htmlFor="observacoes">Observações (opcional):</label>
-            <textarea 
+            <textarea
               id="observacoes"
               placeholder="Ex: Sacos pesados, deixar na portaria, item frágil..."
               value={observacoes}
