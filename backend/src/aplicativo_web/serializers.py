@@ -3,6 +3,8 @@ from rest_framework import serializers
 from .models import Produtor, Coletor, Cooperativa, SolicitacaoColeta, ItemColeta
 
 # --- Serializers de Registro (Atualizados para novos campos) ---
+
+
 class ProdutorRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Produtor
@@ -14,7 +16,7 @@ class ProdutorRegistrationSerializer(serializers.ModelSerializer):
         ]
         # ATUALIZADO: 'id' e campos novos são read_only
         extra_kwargs = {
-            'senha': {'write_only': True}, 
+            'senha': {'write_only': True},
             'id': {'read_only': True},
             'nota_avaliacao_atual': {'read_only': True},
             'total_avaliacoes': {'read_only': True},
@@ -27,6 +29,7 @@ class ProdutorRegistrationSerializer(serializers.ModelSerializer):
         except Exception as e:
             raise serializers.ValidationError({'detail': str(e)})
 
+
 class ColetorRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Coletor
@@ -37,7 +40,7 @@ class ColetorRegistrationSerializer(serializers.ModelSerializer):
             'nota_avaliacao_atual', 'total_avaliacoes'
         ]
         extra_kwargs = {
-            'senha': {'write_only': True}, 
+            'senha': {'write_only': True},
             'id': {'read_only': True},
             'nota_avaliacao_atual': {'read_only': True},
             'total_avaliacoes': {'read_only': True},
@@ -49,6 +52,7 @@ class ColetorRegistrationSerializer(serializers.ModelSerializer):
         except Exception as e:
             raise serializers.ValidationError({'detail': str(e)})
 
+
 class CooperativaRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cooperativa
@@ -57,7 +61,8 @@ class CooperativaRegistrationSerializer(serializers.ModelSerializer):
             'id', 'nome_empresa', 'email', 'senha', 'telefone', 'cnpj',
             'cep', 'rua', 'numero', 'bairro', 'cidade', 'estado', 'geom'
         ]
-        extra_kwargs = {'senha': {'write_only': True}, 'id': {'read_only': True}}
+        extra_kwargs = {'senha': {'write_only': True},
+                        'id': {'read_only': True}}
 
     def create(self, validated_data):
         try:
@@ -66,25 +71,31 @@ class CooperativaRegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'detail': str(e)})
 
 # --- Serializer de Login (Sem alterações, mas ajustado para 'cpf_cnpj') ---
+
+
 class LoginSerializer(serializers.Serializer):
     # O frontend envia 'email', que pode ser email OU cpf/cnpj
-    email = serializers.CharField(required=True) 
+    email = serializers.CharField(required=True)
     password = serializers.CharField(required=True)
 
 # --- Serializer para Itens (Atualizado) ---
+
+
 class ItemColetaSerializer(serializers.ModelSerializer):
     class Meta:
         model = ItemColeta
         # ATUALIZADO: Campos corretos para criação
-        fields = ['tipo_residuo', 'quantidade', 'unidade_medida'] 
+        fields = ['tipo_residuo', 'quantidade', 'unidade_medida']
 
 # --- Serializer para CRIAR Solicitação (Atualizado) ---
+
+
 class SolicitacaoColetaCreateSerializer(serializers.ModelSerializer):
-    itens = ItemColetaSerializer(many=True) 
+    itens = ItemColetaSerializer(many=True)
 
     class Meta:
         model = SolicitacaoColeta
-       
+
         fields = [
             'inicio_coleta',
             'fim_coleta',
@@ -103,9 +114,12 @@ class SolicitacaoColetaCreateSerializer(serializers.ModelSerializer):
                 ItemColeta.objects.create(solicitacao=solicitacao, **item_data)
             return solicitacao
         except Exception as e:
-            raise serializers.ValidationError({'detail': f'Erro ao criar solicitação: {str(e)}'})
+            raise serializers.ValidationError(
+                {'detail': f'Erro ao criar solicitação: {str(e)}'})
 
 # --- Serializer para LISTAR Solicitações (Atualizado) ---
+
+
 class SolicitacaoColetaListSerializer(serializers.ModelSerializer):
     coletor_nome = serializers.CharField(
         source='coletor.nome', read_only=True, allow_null=True)
@@ -113,15 +127,25 @@ class SolicitacaoColetaListSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(
         source='get_status_display', read_only=True)
 
+    # Nested com dados resumidos do produtor (inclui endereço)
+    class ProdutorResumoSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Produtor
+            fields = ['id', 'nome', 'email', 'telefone', 'cep',
+                      'rua', 'numero', 'bairro', 'cidade', 'estado']
+            read_only_fields = fields
+
+    produtor = ProdutorResumoSerializer(read_only=True)
+
     class Meta:
         model = SolicitacaoColeta
-        
+
         fields = [
-            'id', 'inicio_coleta', 'fim_coleta', 'status', 
-            'status_display', 'coletor_nome', 'itens_count',
-            'observacoes'
+            'id', 'inicio_coleta', 'fim_coleta', 'status',
+            'status_display', 'coletor_nome', 'itens_count', 'observacoes',
+            'produtor'
         ]
-        read_only_fields = fields 
+        read_only_fields = fields
 
     def get_itens_count(self, obj):
         return obj.itens.count()

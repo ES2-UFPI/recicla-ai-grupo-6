@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'; // Adicionamos useCallback
 import './Coletas.css';
+import api from '../apiFetch';
 import { FaMapMarkerAlt, FaBoxOpen, FaInfoCircle, FaTimes, FaWarehouse, FaStar, FaSpinner } from 'react-icons/fa'; // Mudei para fa6
 
 // Importações do Leaflet
@@ -9,7 +10,7 @@ import 'leaflet-routing-machine';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 
 // Correção para o Bug dos Ícones
-delete (L.Icon.Default.prototype as any)._getIconUrl; 
+delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
   iconUrl: require('leaflet/dist/images/marker-icon.png'),
@@ -44,31 +45,32 @@ const mockCooperativasDisponiveis = [
   },
 ];
 const mockColetasDisponiveis = [
-    {
-      id: 'c001',
-      distancia: '1.2 km',
-      produtor: {
-        nome: 'Ana Luiza',
-        endereco: 'Rua das Flores, 123, Bairro Centro',
-      },
-      itens: [
-        { id: 'i1', descricao: 'Cerca de 10 garrafas PET', categoria: 'Plástico' },
-        { id: 'i2', descricao: 'Jornais e 1 caixa de papelão', categoria: 'Papel' },
-      ],
+  {
+    id: 'c001',
+    distancia: '1.2 km',
+    produtor: {
+      nome: 'Ana Luiza',
+      endereco: 'Rua das Flores, 123, Bairro Centro',
     },
-    {
-      id: 'c002',
-      distancia: '3.5 km',
-      produtor: {
-        nome: 'Mercado Bom Preço',
-        endereco: 'Av. Principal, 1020, Bairro Sul',
-      },
-      itens: [
-        { id: 'i3', descricao: 'Muitas caixas de papelão desmontadas', categoria: 'Papel' },
-        { id: 'i4', descricao: 'Latas de alumínio (aprox. 2 sacos)', categoria: 'Metal' },
-      ],
+    itens: [
+      { id: 'i1', descricao: 'Cerca de 10 garrafas PET', categoria: 'Plástico' },
+      { id: 'i2', descricao: 'Jornais e 1 caixa de papelão', categoria: 'Papel' },
+    ],
+  },
+  {
+    id: 'c002',
+    distancia: '3.5 km',
+    produtor: {
+      nome: 'Mercado Bom Preço',
+      endereco: 'Av. Principal, 1020, Bairro Sul',
     },
-  ];
+    itens: [
+      { id: 'i3', descricao: 'Muitas caixas de papelão desmontadas', categoria: 'Papel' },
+      { id: 'i4', descricao: 'Latas de alumínio (aprox. 2 sacos)', categoria: 'Metal' },
+    ],
+  },
+];
+
 
 // --- NOVO COMPONENTE DE ROTA ---
 // Este componente é feito para ser colocado DENTRO de um <MapContainer>
@@ -85,24 +87,24 @@ const RouteCalculator: React.FC<RouteCalculatorProps> = ({ pontoA, pontoB, onSum
   const markerBRef = useRef<L.Marker | null>(null);
 
   // Ícones personalizados
-const iconColetor = L.icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
-});
+  const iconColetor = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+  });
 
-const iconCooperativa = L.icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
-});
+  const iconCooperativa = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+  });
 
   useEffect(() => {
-    
+
     if (!map) return;
 
     let isUnmounted = false;
@@ -129,7 +131,7 @@ const iconCooperativa = L.icon({
       try {
         if (routingControlRef.current) {
           const old = routingControlRef.current as any;
-          try { old.off && old.off('routesfound', handleRoutesFound); } catch {}
+          try { old.off && old.off('routesfound', handleRoutesFound); } catch { }
           if (old._map) {
             try { map.removeControl(old); } catch (err) { /* ignore */ }
           }
@@ -143,14 +145,14 @@ const iconCooperativa = L.icon({
         if (markerARef.current && map.hasLayer(markerARef.current)) {
           map.removeLayer(markerARef.current);
         }
-      } catch (err) {}
+      } catch (err) { }
       markerARef.current = null;
 
       try {
         if (markerBRef.current && map.hasLayer(markerBRef.current)) {
           map.removeLayer(markerBRef.current);
         }
-      } catch (err) {}
+      } catch (err) { }
       markerBRef.current = null;
 
       // adiciona marcadores
@@ -203,31 +205,31 @@ const iconCooperativa = L.icon({
     try {
       map.whenReady(() => {
         // força invalidateSize (ajusta tamanho) e cria rota com pequeno delay
-        try { map.invalidateSize(); } catch (err) {}
+        try { map.invalidateSize(); } catch (err) { }
         // delay para evitar problemas com animações de modal
         readyTimeout = window.setTimeout(() => createRouting(), 120);
       });
       // fallback: se whenReady não disparar em X ms (raro), criamos mesmo assim
       const fallback = window.setTimeout(() => {
         if (!created && !isUnmounted) {
-          try { map.invalidateSize(); } catch (err) {}
+          try { map.invalidateSize(); } catch (err) { }
           createRouting();
         }
       }, 1000);
       // limpamos fallback no cleanup
       return () => {
         isUnmounted = true;
-        try { clearTimeout(fallback); } catch {}
+        try { clearTimeout(fallback); } catch { }
         if (readyTimeout) {
-          try { clearTimeout(readyTimeout); } catch {}
+          try { clearTimeout(readyTimeout); } catch { }
         }
 
         // removendo listeners antes de remover controle (para evitar callbacks tardios)
         try {
           if (routingControlRef.current) {
             const ctrl = routingControlRef.current as any;
-            try { ctrl.off && ctrl.off('routesfound', handleRoutesFound); } catch {}
-            try { ctrl.off && ctrl.off('routingerror'); } catch {}
+            try { ctrl.off && ctrl.off('routesfound', handleRoutesFound); } catch { }
+            try { ctrl.off && ctrl.off('routingerror'); } catch { }
             // tenta abortar requisição pendente (se houver)
             try {
               // várias implementações internas do LRM usam xhr/requests com nomes diferentes,
@@ -265,20 +267,20 @@ const iconCooperativa = L.icon({
           if (markerARef.current && map.hasLayer(markerARef.current)) {
             map.removeLayer(markerARef.current);
           }
-        } catch (err) {}
+        } catch (err) { }
         markerARef.current = null;
 
         try {
           if (markerBRef.current && map.hasLayer(markerBRef.current)) {
             map.removeLayer(markerBRef.current);
           }
-        } catch (err) {}
+        } catch (err) { }
         markerBRef.current = null;
       };
     } catch (err) {
       console.error('Erro no setup do RouteCalculator:', err);
       // cleanup se falhar no setup inicial
-      return () => {};
+      return () => { };
     }
   }, [map, pontoA, pontoB, onSummary]);
 
@@ -292,6 +294,9 @@ const ColetorHome = () => {
   const [routeDetails, setRouteDetails] = useState<{ pontoA: LatLng, coopName: string, pontoB: LatLng } | null>(null);
   const [mapLoading, setMapLoading] = useState(false);
   const [routeSummary, setRouteSummary] = useState<string | null>(null);
+  const [dbColetas, setDbColetas] = useState<any[]>([]);
+  const [dbLoading, setDbLoading] = useState<boolean>(false);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   // --- ESTA É A CORREÇÃO ---
   // Envolvemos a função 'setRouteSummary' em 'useCallback'.
@@ -305,10 +310,10 @@ const ColetorHome = () => {
 
 
   const handleAceitarColeta = (coletaId: string, cooperativa: typeof mockCooperativasDisponiveis[0]) => {
-    
-    setMapLoading(true); 
-    setColetaSelecionada(null); 
-    setRouteSummary(null); 
+
+    setMapLoading(true);
+    setColetaSelecionada(null);
+    setRouteSummary(null);
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -317,17 +322,47 @@ const ColetorHome = () => {
         const pontoB = new LatLng(cooperativa.lat, cooperativa.lng);
 
         setRouteDetails({ pontoA, pontoB, coopName: cooperativa.nome });
-        setMapLoading(false); 
-        
+        setMapLoading(false);
+
         console.log(`Coleta ${coletaId} aceita! Rota: Minha Posição -> ${cooperativa.nome}`);
       },
       (error) => {
         console.error("Erro ao obter geolocalização:", error);
         alert("Erro ao obter sua localização. Verifique as permissões do navegador.");
-        setMapLoading(false); 
+        setMapLoading(false);
       }
     );
   };
+
+  // Busca coletas disponíveis no backend (tabela solicitacao_coleta)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setDbLoading(true);
+      setDbError(null);
+      try {
+        const resp = await api.request('/api/coletas/disponiveis/');
+        console.debug('GET /api/coletas/disponiveis/ ->', resp.status);
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => '');
+          console.warn('Resposta não OK ao buscar coletas disponiveis:', resp.status, text);
+          if (mounted) setDbError(`Erro HTTP ${resp.status}`);
+          return;
+        }
+        const data = await resp.json();
+        console.debug('Dados recebidos de /api/coletas/disponiveis/:', data);
+        // DRF pode retornar uma lista ou um objeto paginado { results: [...] }
+        const list = Array.isArray(data) ? data : (data && Array.isArray(data.results) ? data.results : []);
+        if (mounted) setDbColetas(list);
+      } catch (err: any) {
+        console.error('Erro ao buscar coletas disponiveis:', err);
+        if (mounted) setDbError(String(err));
+      } finally {
+        if (mounted) setDbLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <div className="coletas-disponiveis-container">
@@ -348,6 +383,39 @@ const ColetorHome = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* --- COLETAS VINDAS DO BANCO DE DADOS --- */}
+      <div style={{ marginTop: '20px' }}>
+        <h2>Coletas Disponíveis (Banco de Dados)</h2>
+        {dbLoading ? (
+          <div>Carregando coletas do servidor...</div>
+        ) : dbError ? (
+          <div style={{ color: 'var(--danger, #c00)' }}>Erro ao carregar coletas: {dbError}</div>
+        ) : dbColetas.length === 0 ? (
+          <div>Nenhuma coleta disponível no momento.</div>
+        ) : (
+          <div className="coletas-grid">
+            {dbColetas.map((c) => {
+              const endereco = `${c.produtor?.rua || ''} ${c.produtor?.numero || ''}, ${c.produtor?.bairro || ''}, ${c.produtor?.cidade || ''}`.replace(/\s+/g, ' ').trim();
+              return (
+                <div key={c.id} className="coleta-card">
+                  <div className="card-header">
+                    <h3>{c.produtor?.nome || 'Produtor'}</h3>
+                    <span className="distancia-badge"><FaMapMarkerAlt /> {c.itens_count || '-'} item(s)</span>
+                  </div>
+                  <p className="endereco-produtor">{endereco}</p>
+                  <div className="itens-preview"><FaBoxOpen /> {c.itens_count || 0} tipo(s) de material</div>
+                  <div className="card-actions">
+                    <button className="details-button" onClick={() => setColetaSelecionada({ id: c.id, produtor: { nome: c.produtor?.nome || '', endereco }, itens: [] } as any)}>
+                      <FaInfoCircle /> Ver Detalhes
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* --- MODAL 1: DETALHES DA COLETA --- */}
@@ -373,7 +441,7 @@ const ColetorHome = () => {
                 ))}
               </ul>
             </div>
-            
+
             <div className="modal-section">
               <h4><FaWarehouse /> Escolha uma Cooperativa para a Entrega</h4>
               <div className="cooperativas-sugeridas-list">
@@ -431,22 +499,22 @@ const ColetorHome = () => {
       {routeDetails && (
         <div className="modal-overlay map-modal-overlay">
           <div className="modal-content map-modal-content">
-          <div className="map-legend">
-            <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png" width="15" /> Sua Localização</div>
-            <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png" width="15" /> Cooperativa</div>
-          </div>
+            <div className="map-legend">
+              <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png" width="15" /> Sua Localização</div>
+              <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png" width="15" /> Cooperativa</div>
+            </div>
             <button className="close-modal-btn" onClick={() => setRouteDetails(null)}><FaTimes /></button>
             <h2>Rota para {routeDetails.coopName}</h2>
-            
+
             <p className="route-summary">
               {routeSummary || 'Calculando rota pelas ruas...'}
             </p>
-            
-            
+
+
             {/* ATUALIZADO: O MapContainer agora vive aqui */}
-            <MapContainer 
-              center={routeDetails.pontoA} 
-              zoom={13} 
+            <MapContainer
+              center={routeDetails.pontoA}
+              zoom={13}
               style={{ height: '400px', width: '100%', borderRadius: '10px' }}
             >
               <TileLayer
@@ -454,13 +522,13 @@ const ColetorHome = () => {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
               />
               {/* ATUALIZADO: Passa a função estável 'handleSummary' */}
-              <RouteCalculator 
-                pontoA={routeDetails.pontoA} 
-                pontoB={routeDetails.pontoB} 
+              <RouteCalculator
+                pontoA={routeDetails.pontoA}
+                pontoB={routeDetails.pontoB}
                 onSummary={handleSummary}
               />
             </MapContainer>
-            
+
           </div>
         </div>
       )}
