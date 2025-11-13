@@ -48,4 +48,8 @@ async function register(data: any) {
     return request('/api/register/', 'POST', data);
 }
 
-export default { request, login, register, getToken, setToken, clearToken };
+// Envia uma solicitação de coleta (dados esperados pelo backend: itens, observacoes, endereco, etc.)
+async function solicitarColeta(data: any) {
+    return request('/api/coletas/solicitar/', 'POST', data);
+}
+export default { request, login, register, solicitarColeta, getToken, setToken, clearToken };

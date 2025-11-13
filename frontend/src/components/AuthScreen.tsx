@@ -64,8 +64,10 @@ const AuthScreen = (props: Props) => {
             api.setToken(access);
             setFeedback('Login realizado! Redirecionando...');
             setErrors(null);
+            // tenta extrair o nome retornado pela API; se não houver, usa email como fallback
+            const displayName = data.name || data.nome || data.username || email;
             // avisa App sobre login
-            if (props.onLogin) props.onLogin({ name: email, type: user_type });
+            if (props.onLogin) props.onLogin({ name: displayName, type: user_type });
           } else if (res.status === 401) {
             setFeedback('Credenciais inválidas.');
             setErrors(data || { detail: 'Unauthorized' });
@@ -108,7 +110,7 @@ const AuthScreen = (props: Props) => {
         payload.email = email;
         payload.senha = password;
         payload.telefone = phone;
-        payload.cpf = cpf;
+        payload.cpf_cnpj = cpf;
         payload.cep = cep;
         payload.rua = street;
         payload.numero = number;
