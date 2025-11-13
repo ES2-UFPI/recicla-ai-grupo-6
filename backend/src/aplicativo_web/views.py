@@ -174,6 +174,21 @@ class MinhasSolicitacoesView(generics.ListAPIView):
             return SolicitacaoColeta.objects.filter(produtor=produtor_profile).order_by('-id')
         except Produtor.DoesNotExist:
             return SolicitacaoColeta.objects.none()
+
+
+class DisponiveisSolicitacoesView(generics.ListAPIView):
+    """Lista todas as solicitações de coleta disponíveis (status = 'SOLICITADA').
+    Usado pelo Coletor/Frontend para ver coletas pendentes no sistema.
+    """
+    serializer_class = SolicitacaoColetaListSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        try:
+            return SolicitacaoColeta.objects.filter(status='SOLICITADA').order_by('-id')
+        except Exception as e:
+            print(f"Erro ao buscar coletas disponiveis: {e}")
+            return SolicitacaoColeta.objects.none()
         except Exception as e:
             print(f"Erro ao buscar solicitações: {e}")
             return SolicitacaoColeta.objects.none()
