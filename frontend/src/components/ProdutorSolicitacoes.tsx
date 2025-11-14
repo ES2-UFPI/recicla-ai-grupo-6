@@ -40,6 +40,17 @@ const ProdutorSolicitacoes = () => {
     fetchSolicitacoes();
   }, []);
 
+  const formatDateTimeOffset = (value?: string | number | null, hoursToSubtract = 0) => {
+    if (!value) return '—';
+    const d = new Date(value as any);
+    if (isNaN(d.getTime())) return '—';
+    d.setHours(d.getHours() - hoursToSubtract);
+    const date = d.toLocaleDateString('pt-BR');
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    return `${date} ${hours}h${minutes}`;
+  };
+
   async function handleCancelar(_id: string) {
     // Cancelamento não implementado no backend atualmente.
     alert('Cancelamento não disponível: endpoint não implementado no backend.');
@@ -75,7 +86,7 @@ const ProdutorSolicitacoes = () => {
               solicitacoes.map(sol => (
                 <tr key={sol.id}>
                   <td>{sol.id}</td>
-                  <td>{new Date(sol.inicio_coleta || sol.fim_coleta || Date.now()).toLocaleDateString('pt-BR')}</td>
+                  <td>{formatDateTimeOffset(sol.inicio_coleta || sol.fim_coleta || Date.now(), 6)}</td>
                   <td>
                     <span className={`status-badge status-${(sol.status || '').toString().toLowerCase().replace(' ', '-')}`}>
                       {sol.status_display || sol.status}

@@ -23,6 +23,7 @@
   flex-direction: column;
   transition: transform 0.2s, box-shadow 0.2s;
 }
+
 .coleta-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
@@ -36,6 +37,7 @@
   padding-bottom: 15px;
   margin-bottom: 15px;
 }
+
 .card-header h3 {
   margin: 0;
   color: #333;
@@ -51,7 +53,10 @@
   display: flex;
   align-items: center;
 }
-.distancia-badge svg { margin-right: 5px; }
+
+.distancia-badge svg {
+  margin-right: 5px;
+}
 
 .endereco-produtor {
   color: #666;
@@ -66,13 +71,19 @@
   display: flex;
   align-items: center;
 }
-.itens-preview svg { margin-right: 8px; color: #28a745; }
+
+.itens-preview svg {
+  margin-right: 8px;
+  color: #28a745;
+}
 
 .card-actions {
-  margin-top: auto; /* Empurra os botões para o final do card */
+  margin-top: auto;
+  /* Empurra os botões para o final do card */
   display: flex;
   gap: 10px;
 }
+
 .card-actions button {
   flex: 1;
   padding: 10px;
@@ -86,25 +97,63 @@
   justify-content: center;
   transition: all 0.2s;
 }
-.card-actions button svg { margin-right: 8px; }
+
+.card-actions button svg {
+  margin-right: 8px;
+}
 
 .details-button {
   background-color: #e9ecef;
   color: #495057;
 }
-.details-button:hover { background-color: #dee2e6; }
+
+.details-button:hover {
+  background-color: #dee2e6;
+}
 
 .accept-button {
-  background-color: #28a745;
-  color: #fff;
+  /* Visual moderno: gradiente suave, canto arredondado maior e sombra suave */
+  background: linear-gradient(90deg, #31d07a 0%, #28a745 100%);
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 8px 20px rgba(40, 167, 69, 0.14);
+  transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(4px);
 }
-.accept-button:hover { background-color: #218838; }
+
+.accept-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(40, 167, 69, 0.18);
+  filter: brightness(1.03);
+}
+
+.accept-button:active {
+  transform: translateY(-1px) scale(0.997);
+}
+
+.accept-button:focus-visible {
+  outline: 3px solid rgba(40, 167, 69, 0.18);
+  outline-offset: 3px;
+}
 
 /* --- Estilos para o Modal --- */
 .modal-overlay {
   position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
@@ -126,17 +175,22 @@
 
 .close-modal-btn {
   position: absolute;
-  top: 15px; right: 15px;
+  top: 15px;
+  right: 15px;
   background: #f1f3f5;
   border: none;
   border-radius: 50%;
-  width: 30px; height: 30px;
+  width: 30px;
+  height: 30px;
   cursor: pointer;
   display: grid;
   place-items: center;
   color: #868e96;
 }
-.close-modal-btn:hover { background: #e9ecef; }
+
+.close-modal-btn:hover {
+  background: #e9ecef;
+}
 
 .modal-content h2 {
   color: #2c3e50;
@@ -148,7 +202,12 @@
   border-top: 1px solid #eee;
   padding: 20px 0;
 }
-.modal-section:first-of-type { border-top: none; padding-top: 0; }
+
+.modal-section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
 .modal-section h4 {
   margin-top: 0;
   margin-bottom: 10px;
@@ -156,13 +215,22 @@
   display: flex;
   align-items: center;
 }
-.modal-section h4 svg { margin-right: 10px; color: #28a745; }
-.modal-section p { margin: 5px 0; color: #555; }
+
+.modal-section h4 svg {
+  margin-right: 10px;
+  color: #28a745;
+}
+
+.modal-section p {
+  margin: 5px 0;
+  color: #555;
+}
 
 .modal-itens-list {
   list-style: none;
   padding: 0;
 }
+
 .modal-itens-list li {
   background: #f8f9fa;
   padding: 10px;
@@ -179,6 +247,7 @@
   gap: 8px;
   margin-top: 10px;
 }
+
 .material-tag {
   background: #e6f7f0;
   color: #126b46;
@@ -243,7 +312,8 @@
 }
 
 .star-icon {
-  color: #f5b721; /* Cor de estrela/destaque */
+  color: #f5b721;
+  /* Cor de estrela/destaque */
   margin-right: 8px;
 }
 
@@ -254,7 +324,8 @@
   border-radius: 12px;
   font-size: 0.8rem;
   font-weight: 600;
-  margin-left: auto; /* Alinha o preço à direita */
+  margin-left: auto;
+  /* Alinha o preço à direita */
 }
 
 .nenhum-interesse-msg {
@@ -266,7 +337,6 @@
 
 .coop-card-footer {
   padding: 15px;
-  background-color: #e9ecef;
   border-top: 1px solid #dee2e6;
   border-bottom-left-radius: 10px;
   border-bottom-right-radius: 10px;
@@ -274,6 +344,8 @@
 
 .coop-card-footer .accept-button {
   width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
 }
 
 /* --- Estilos para o Loading do GPS --- */
@@ -283,7 +355,8 @@
   justify-content: center;
   align-items: center;
   color: white;
-  z-index: 1001; /* Fica em cima do modal de detalhes */
+  z-index: 1001;
+  /* Fica em cima do modal de detalhes */
 }
 
 .loading-spinner {
@@ -292,8 +365,13 @@
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-overlay p {
@@ -304,14 +382,17 @@
 
 /* --- Estilos para o Modal do Mapa --- */
 .map-modal-overlay {
-  z-index: 1002; /* Fica em cima de tudo */
+  z-index: 1002;
+  /* Fica em cima de tudo */
 }
 
 .map-modal-content {
-  max-width: 800px; /* Maior, para o mapa */
+  max-width: 800px;
+  /* Maior, para o mapa */
 }
 
-.map-modal-content h2, .map-modal-content p {
+.map-modal-content h2,
+.map-modal-content p {
   text-align: center;
 }
 
@@ -347,8 +428,10 @@
 
 /* --- Estilo para o Resumo da Rota (Tempo/Distância) --- */
 .route-summary {
-  font-size: 1.1rem !important; /* !important para sobrepor o <p> padrão */
-  color: #28a745 !important; /* Verde */
+  font-size: 1.1rem !important;
+  /* !important para sobrepor o <p> padrão */
+  color: #28a745 !important;
+  /* Verde */
   font-weight: 600 !important;
   text-align: center;
   margin-top: -15px !important;
