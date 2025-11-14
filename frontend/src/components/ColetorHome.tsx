@@ -290,11 +290,28 @@ const RouteCalculator: React.FC<RouteCalculatorProps> = ({ pontoA, pontoB, onSum
 
 // --- COMPONENTE PRINCIPAL (ATUALIZADO) ---
 const ColetorHome = () => {
-  const [coletaSelecionada, setColetaSelecionada] = useState<typeof mockColetasDisponiveis[0] | null>(null);
+  // Tipagem para a coleta selecionada (detalhada)
+  interface ItemSelecionado {
+    id: string | number;
+    descricao: string;
+    categoria: string;
+  }
+  interface ColetaSelecionadaType {
+    id: string | number;
+    produtor: { nome: string; endereco: string };
+    itens: ItemSelecionado[];
+    observacoes?: string;
+  }
+
+  const [coletaSelecionada, setColetaSelecionada] = useState<ColetaSelecionadaType | null>(null);
   const [routeDetails, setRouteDetails] = useState<{ pontoA: LatLng, coopName: string, pontoB: LatLng } | null>(null);
   const [mapLoading, setMapLoading] = useState(false);
   const [routeSummary, setRouteSummary] = useState<string | null>(null);
   const [dbColetas, setDbColetas] = useState<any[]>([]);
+  const [collectorPos, setCollectorPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [dbCooperativas, setDbCooperativas] = useState<any[] | null>(null);
+  const [geocodeCache, setGeocodeCache] = useState<Record<string, { lat: number; lng: number }>>({});
+  const geocodingInProgressRef = useRef<Set<string | number>>(new Set());
   const [dbLoading, setDbLoading] = useState<boolean>(false);
   const [dbError, setDbError] = useState<string | null>(null);
 
@@ -309,22 +326,89 @@ const ColetorHome = () => {
   // --- FIM DA CORREÇÃO ---
 
 
-  const handleAceitarColeta = (coletaId: string, cooperativa: typeof mockCooperativasDisponiveis[0]) => {
+  const handleAceitarColeta = async (coletaId: string | number, cooperativa: typeof mockCooperativasDisponiveis[0]) => {
 
     setMapLoading(true);
     setColetaSelecionada(null);
     setRouteSummary(null);
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const pontoA = new LatLng(latitude, longitude);
-        const pontoB = new LatLng(cooperativa.lat, cooperativa.lng);
-
-        setRouteDetails({ pontoA, pontoB, coopName: cooperativa.nome });
+    // Chama backend para aceitar/assumir a solicitação (seta coletor_id)
+    try {
+      const acceptResp = await api.request(`/api/coletas/${coletaId}/aceitar/`, 'POST');
+      console.debug('POST /api/coletas/' + coletaId + '/aceitar/ ->', acceptResp.status);
+      if (!acceptResp.ok) {
+        const text = await acceptResp.text().catch(() => '');
+        console.warn('Falha ao aceitar solicitação:', acceptResp.status, text);
+        alert('Falha ao aceitar a solicitação. Tente novamente.');
         setMapLoading(false);
+        return;
+      }
+      // Remoção otimista: atualiza a lista local de coletas para refletir a aceitação
+      // Isso faz a UI ser reativa sem precisar recarregar a página.
+      try {
+        setDbColetas(prev => prev.filter(item => String(item.id) !== String(coletaId)));
+      } catch (err) {
+        console.warn('Erro ao atualizar lista local de coletas (optimistic remove):', err);
+      }
+    } catch (err) {
+      console.error('Erro ao chamar endpoint de aceitar coleta:', err);
+      alert('Erro de rede ao aceitar a coleta. Verifique sua conexão.');
+      setMapLoading(false);
+      return;
+    }
 
-        console.log(`Coleta ${coletaId} aceita! Rota: Minha Posição -> ${cooperativa.nome}`);
+    // Obtem a posição do coletor; o callback pode ser async para permitir geocoding se necessário
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+
+        // valida coordenadas da cooperativa; se ausentes, tenta geocodificar pelo endereço/nome
+        let coopLat: number | undefined = cooperativa.lat as any;
+        let coopLng: number | undefined = cooperativa.lng as any;
+
+        if (coopLat == null || coopLng == null || Number.isNaN(coopLat) || Number.isNaN(coopLng)) {
+          try {
+            const query = cooperativa.endereco || cooperativa.nome || '';
+            if (!query) throw new Error('Endereço da cooperativa não disponível para geocoding');
+            // usa Nominatim (OpenStreetMap) para uma tentativa simples de geocoding
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+            const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (!resp.ok) throw new Error('Falha no geocoding');
+            const data = await resp.json();
+            if (Array.isArray(data) && data.length > 0) {
+              coopLat = parseFloat(data[0].lat);
+              coopLng = parseFloat(data[0].lon);
+            } else {
+              throw new Error('Nenhum resultado encontrado no geocoding');
+            }
+          } catch (err) {
+            console.warn('Geocoding falhou para cooperativa:', cooperativa, err);
+            alert('Não foi possível obter coordenadas da cooperativa selecionada. Verifique o endereço ou escolha outra cooperativa.');
+            setMapLoading(false);
+            return;
+          }
+        }
+
+        // checa novamente se temos valores válidos
+        if (typeof coopLat !== 'number' || typeof coopLng !== 'number' || Number.isNaN(coopLat) || Number.isNaN(coopLng)) {
+          alert('Coordenadas inválidas da cooperativa. Ação cancelada.');
+          setMapLoading(false);
+          return;
+        }
+
+        try {
+          const pontoA = new LatLng(latitude, longitude);
+          const pontoB = new LatLng(coopLat, coopLng);
+
+          setRouteDetails({ pontoA, pontoB, coopName: cooperativa.nome });
+          setMapLoading(false);
+
+          console.log(`Coleta ${coletaId} aceita! Rota: Minha Posição -> ${cooperativa.nome}`);
+        } catch (err) {
+          console.error('Erro ao criar pontos LatLng:', err);
+          alert('Erro interno ao processar coordenadas do mapa.');
+          setMapLoading(false);
+        }
       },
       (error) => {
         console.error("Erro ao obter geolocalização:", error);
@@ -336,6 +420,19 @@ const ColetorHome = () => {
 
   // Busca coletas disponíveis no backend (tabela solicitacao_coleta)
   useEffect(() => {
+    // tenta obter posição do coletor para calcular distâncias locais
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          console.debug('Got collectorPos:', pos.coords.latitude, pos.coords.longitude);
+          setCollectorPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        (err) => console.debug('Geolocation não disponível ou negada:', err),
+        { enableHighAccuracy: false, maximumAge: 1000 * 60 * 5, timeout: 5000 }
+      );
+    } catch (err) {
+      console.debug('Geolocation não suportada:', err);
+    }
     let mounted = true;
     (async () => {
       setDbLoading(true);
@@ -364,30 +461,187 @@ const ColetorHome = () => {
     return () => { mounted = false; };
   }, []);
 
+  // Helper: haversine distance (km)
+  const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const toRad = (v: number) => (v * Math.PI) / 180;
+    const R = 6371; // km
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // tenta extrair coordenadas do produtor (vários formatos possíveis)
+  const getProducerCoords = (c: any): { lat?: number; lng?: number } => {
+    if (!c || !c.produtor) return {};
+    const p = c.produtor;
+    // casos comuns: p.lat & p.lng, p.latitude & p.longitude, p.geom.coordinates (GeoJSON: [lng, lat])
+    if (typeof p.lat === 'number' && typeof p.lng === 'number') return { lat: p.lat, lng: p.lng };
+    if (typeof p.latitude === 'number' && typeof p.longitude === 'number') return { lat: p.latitude, lng: p.longitude };
+    if (p.geom && Array.isArray(p.geom.coordinates) && p.geom.coordinates.length >= 2) {
+      const [lng, lat] = p.geom.coordinates;
+      return { lat: Number(lat), lng: Number(lng) };
+    }
+    // fallback: check geocode cache (keyed by coleta id when possible)
+    try {
+      const key = c.id ?? c._id ?? (p.nome ? `${p.nome}-${p.endereco || ''}` : JSON.stringify(p));
+      if (geocodeCache && geocodeCache[key]) {
+        return { lat: geocodeCache[key].lat, lng: geocodeCache[key].lng };
+      }
+    } catch (err) {
+      // ignore
+    }
+    return {};
+  };
+
+  // Geocode producer address via Nominatim (cached, avoids duplicate requests)
+  const geocodeProducerAddress = async (c: any) => {
+    if (!c || !c.produtor) return;
+    const p = c.produtor;
+    const key = c.id ?? c._id ?? (p.nome ? `${p.nome}-${p.endereco || ''}` : JSON.stringify(p));
+    if (geocodingInProgressRef.current.has(key)) return;
+    if (geocodeCache && geocodeCache[key]) return; // already have
+
+    // build a reasonable query string from available parts
+    const parts: string[] = [];
+    if (p.endereco) parts.push(String(p.endereco));
+    if (p.rua) parts.push(String(p.rua));
+    if (p.numero) parts.push(String(p.numero));
+    if (p.bairro) parts.push(String(p.bairro));
+    if (p.cidade) parts.push(String(p.cidade));
+    if (parts.length === 0 && p.nome) parts.push(String(p.nome));
+    const query = parts.filter(Boolean).join(', ');
+    if (!query) return;
+
+    geocodingInProgressRef.current.add(key);
+    try {
+      const params = new URLSearchParams({
+        q: `${query}, Brasil`,
+        format: 'json',
+        limit: '1',
+        addressdetails: '1',
+        countrycodes: 'br',
+        'accept-language': 'pt-BR'
+      });
+      const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+      const resp = await fetch(url, { headers: { Accept: 'application/json', 'User-Agent': 'ReciclaAi/1.0 (contato@exemplo.com)' } });
+      if (!resp.ok) {
+        console.debug('Nominatim response not ok', resp.status);
+        return;
+      }
+      const data = await resp.json().catch(() => []);
+      if (Array.isArray(data) && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        setGeocodeCache(prev => ({ ...prev, [key]: { lat, lng } }));
+        console.debug('Geocoded producer', key, lat, lng);
+      } else {
+        console.debug('Nominatim returned no results for', query);
+      }
+    } catch (err) {
+      console.debug('Geocoding error:', err);
+    } finally {
+      geocodingInProgressRef.current.delete(key);
+    }
+  };
+
+  // Busca cooperativas do backend (se existir endpoint)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const resp = await api.request('/api/cooperativas/');
+        // Se endpoint não existir, ignore silenciosamente
+        if (!resp.ok) {
+          console.debug('GET /api/cooperativas/ não disponível:', resp.status);
+          if (mounted) setDbCooperativas([]);
+          return;
+        }
+        const data = await resp.json();
+        const list = Array.isArray(data) ? data : (data && Array.isArray(data.results) ? data.results : []);
+        if (!mounted) return;
+        // Mapeia nomes/endereços para o mesmo formato usado no UI
+        const mapped = list.map((coop: any) => {
+          const nome = coop.nome_empresa || coop.nome || coop.razao_social || '';
+          const ruaVal = (coop.rua || '').trim();
+          const numeroVal = coop.numero ? String(coop.numero).trim() : '';
+          const bairroVal = (coop.bairro || '').trim();
+          const cidadeVal = (coop.cidade || '').trim();
+          // Se houver número, colocamos uma vírgula antes dele: "Rua Exemplo, 123"
+          let streetPart = '';
+          if (ruaVal && numeroVal) {
+            streetPart = `${ruaVal}, ${numeroVal}`;
+          } else {
+            streetPart = ruaVal || numeroVal;
+          }
+          const enderecoParts = [streetPart, bairroVal, cidadeVal].filter(Boolean).map(s => s.trim());
+          const endereco = enderecoParts.join(', ');
+          return { id: coop.id ?? coop.id_recompensa ?? coop.pk ?? nome, nome, endereco, lat: coop.lat, lng: coop.lng };
+        });
+        console.debug('DB cooperativas fetched:', mapped);
+        setDbCooperativas(mapped);
+      } catch (err) {
+        console.debug('Erro ao buscar cooperativas (silencioso):', err);
+        if (mounted) setDbCooperativas([]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // decide quais cooperativas mostrar no modal (DB -> fallback para mocks)
+  const cooperativasParaMostrar = (dbCooperativas && dbCooperativas.length > 0) ? dbCooperativas : mockCooperativasDisponiveis;
+  console.debug('cooperativasParaMostrar (computed):', cooperativasParaMostrar);
+
+  // Busca detalhes completos (incluindo itens) de uma coleta pelo backend
+  const abrirDetalhesDaColeta = async (coletaId: number | string) => {
+    try {
+      setDbError(null);
+      const resp = await api.request(`/api/coletas/${coletaId}/`);
+      console.debug(`GET /api/coletas/${coletaId}/ ->`, resp.status);
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => '');
+        console.warn('Resposta não OK ao buscar detalhes da coleta:', resp.status, text);
+        alert('Erro ao carregar detalhes da coleta.');
+        return;
+      }
+      const data = await resp.json();
+
+      // Log bruto para inspecionar formato dos itens retornados pelo backend
+      console.debug('Detalhes da coleta (raw itens):', data.itens);
+
+      // Mapeia itens com fallbacks para id/descricao/categoria para evitar keys undefined
+      const itensMapeados = (data.itens || []).map((it: any, idx: number) => ({
+        id: it.id_item ?? it.id ?? it.pk ?? it.item_id ?? `${data.id ?? coletaId}-${idx}`,
+        descricao: (`${it.quantidade ?? it.qtd ?? ''} ${it.unidade_medida ?? ''}`.trim()) || it.descricao || '',
+        categoria: it.tipo_residuo ?? it.categoria ?? it.tipo ?? 'Desconhecido'
+      }));
+
+      console.debug('Itens mapeados para frontend:', itensMapeados);
+
+      const ruaVal = (data.produtor?.rua || '').trim();
+      const numeroVal = data.produtor?.numero ? String(data.produtor.numero).trim() : '';
+      const bairroVal = (data.produtor?.bairro || '').trim();
+      const cidadeVal = (data.produtor?.cidade || '').trim();
+      const streetPart = [ruaVal, numeroVal].filter(Boolean).join(' ').trim();
+      const endereco = [streetPart, bairroVal, cidadeVal].filter(Boolean).map(s => s.trim()).join(', ');
+
+      setColetaSelecionada({
+        id: data.id,
+        produtor: { nome: data.produtor?.nome || '', endereco },
+        itens: itensMapeados,
+        observacoes: data.observacoes || ''
+      } as any);
+    } catch (err) {
+      console.error('Erro ao obter detalhes da coleta:', err);
+      alert('Erro ao carregar itens da coleta.');
+    }
+  };
+
   return (
     <div className="coletas-disponiveis-container">
       <h1>Coletas Disponíveis Próximas a Você</h1>
-      <div className="coletas-grid">
-        {mockColetasDisponiveis.map((coleta) => (
-          <div key={coleta.id} className="coleta-card">
-            <div className="card-header">
-              <h3>{coleta.produtor.nome}</h3>
-              <span className="distancia-badge"><FaMapMarkerAlt /> {coleta.distancia}</span>
-            </div>
-            <p className="endereco-produtor">{coleta.produtor.endereco}</p>
-            <div className="itens-preview"><FaBoxOpen /> {coleta.itens.length} tipo(s) de material</div>
-            <div className="card-actions">
-              <button className="details-button" onClick={() => setColetaSelecionada(coleta)}>
-                <FaInfoCircle /> Ver Detalhes
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* --- COLETAS VINDAS DO BANCO DE DADOS --- */}
-      <div style={{ marginTop: '20px' }}>
-        <h2>Coletas Disponíveis (Banco de Dados)</h2>
+      <div>
         {dbLoading ? (
           <div>Carregando coletas do servidor...</div>
         ) : dbError ? (
@@ -397,17 +651,47 @@ const ColetorHome = () => {
         ) : (
           <div className="coletas-grid">
             {dbColetas.map((c) => {
-              const endereco = `${c.produtor?.rua || ''} ${c.produtor?.numero || ''}, ${c.produtor?.bairro || ''}, ${c.produtor?.cidade || ''}`.replace(/\s+/g, ' ').trim();
+              const ruaVal = (c.produtor?.rua || '').trim();
+              const numeroVal = c.produtor?.numero ? String(c.produtor.numero).trim() : '';
+              const bairroVal = (c.produtor?.bairro || '').trim();
+              const cidadeVal = (c.produtor?.cidade || '').trim();
+              const streetPart = [ruaVal, numeroVal].filter(Boolean).join(' ').trim();
+              const endereco = [streetPart, bairroVal, cidadeVal].filter(Boolean).map(s => s.trim()).join(', ');
+              // calcula distância entre o coletor (logado) e o produtor desta coleta, quando possível
+              const prodCoords = getProducerCoords(c);
+              console.debug('Distance calc input: collectorPos=', collectorPos, 'prodCoords=', prodCoords);
+              let distanceDisplay = '-';
+              if (collectorPos && prodCoords.lat != null && prodCoords.lng != null) {
+                try {
+                  const dkm = haversineKm(collectorPos.lat, collectorPos.lng, prodCoords.lat, prodCoords.lng);
+                  console.debug('Computed distance (km):', dkm);
+                  distanceDisplay = `${dkm.toFixed(1)} km`;
+                } catch (err) {
+                  console.debug('Error computing haversine distance:', err);
+                  distanceDisplay = '-';
+                }
+              } else {
+                // se não houver coords do produtor, tentamos geocodificar o endereço (assíncrono)
+                const key = c.id ?? c._id ?? (c.produtor?.nome ? `${c.produtor.nome}-${c.produtor?.endereco || ''}` : JSON.stringify(c.produtor || {}));
+                if (!geocodeCache[key] && !geocodingInProgressRef.current.has(key)) {
+                  geocodeProducerAddress(c);
+                }
+                // fallback: usa valor retornado pelo backend se houver
+                if (c.distancia) {
+                  console.debug('Fallback backend distancia for coleta', c.id, '=', c.distancia);
+                  distanceDisplay = String(c.distancia);
+                }
+              }
               return (
                 <div key={c.id} className="coleta-card">
                   <div className="card-header">
                     <h3>{c.produtor?.nome || 'Produtor'}</h3>
-                    <span className="distancia-badge"><FaMapMarkerAlt /> {c.itens_count || '-'} item(s)</span>
+                    <span className="distancia-badge"><FaMapMarkerAlt /> {distanceDisplay}</span>
                   </div>
                   <p className="endereco-produtor">{endereco}</p>
                   <div className="itens-preview"><FaBoxOpen /> {c.itens_count || 0} tipo(s) de material</div>
                   <div className="card-actions">
-                    <button className="details-button" onClick={() => setColetaSelecionada({ id: c.id, produtor: { nome: c.produtor?.nome || '', endereco }, itens: [] } as any)}>
+                    <button className="details-button" onClick={() => abrirDetalhesDaColeta(c.id)}>
                       <FaInfoCircle /> Ver Detalhes
                     </button>
                   </div>
@@ -417,6 +701,8 @@ const ColetorHome = () => {
           </div>
         )}
       </div>
+
+      {/* cooperativas agora serão mostradas dentro do modal de detalhes de cada coleta */}
 
       {/* --- MODAL 1: DETALHES DA COLETA --- */}
       {coletaSelecionada && (
@@ -433,21 +719,30 @@ const ColetorHome = () => {
             <div className="modal-section">
               <h4>Itens a Coletar</h4>
               <ul className="modal-itens-list">
-                {coletaSelecionada.itens.map(item => (
-                  <li key={item.id}>
+                {coletaSelecionada.itens.map((item, idx) => (
+                  <li key={item.id ?? `item-${idx}`}>
                     <span className="item-descricao">{item.descricao}</span>
                     <span className="item-categoria">{item.categoria}</span>
                   </li>
                 ))}
               </ul>
             </div>
-
+            {coletaSelecionada.observacoes && (
+              <div className="modal-section">
+                <h4>Observações</h4>
+                <p>{coletaSelecionada.observacoes}</p>
+              </div>
+            )}
             <div className="modal-section">
               <h4><FaWarehouse /> Escolha uma Cooperativa para a Entrega</h4>
               <div className="cooperativas-sugeridas-list">
-                {mockCooperativasDisponiveis.map(coop => {
+                {(!cooperativasParaMostrar || cooperativasParaMostrar.length === 0) ? (
+                  <div className="nenhuma-cooperativa-msg">Nenhuma cooperativa disponível no momento.</div>
+                ) : cooperativasParaMostrar.map(coop => {
                   const itensDeInteresseNestaColeta = coletaSelecionada.itens.filter(itemDaColeta =>
-                    coop.materiaisInteresse.some(itemDeInteresse => itemDeInteresse.categoria === itemDaColeta.categoria)
+                    (coop.materiaisInteresse && Array.isArray(coop.materiaisInteresse))
+                      ? coop.materiaisInteresse.some((itemDeInteresse: any) => itemDeInteresse.categoria === itemDaColeta.categoria)
+                      : false
                   );
                   return (
                     <div key={coop.id} className="cooperativa-sugerida-card">
@@ -460,7 +755,7 @@ const ColetorHome = () => {
                         {itensDeInteresseNestaColeta.length > 0 ? (
                           <div className="itens-interesse-list">
                             {itensDeInteresseNestaColeta.map(item => {
-                              const interesse = coop.materiaisInteresse.find(i => i.categoria === item.categoria);
+                              const interesse = (coop.materiaisInteresse && Array.isArray(coop.materiaisInteresse)) ? coop.materiaisInteresse.find((i: any) => i.categoria === item.categoria) : undefined;
                               return (
                                 <div key={item.id} className="item-interesse">
                                   <FaStar className="star-icon" /> {item.categoria}

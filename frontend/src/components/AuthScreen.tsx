@@ -293,7 +293,7 @@ const AuthScreen = (props: Props) => {
                     />
                     {cepLoading && <small className="cep-loading">Buscando endereço...</small>}
                   </div>
-                  <div className="input-group"><FaMapMarkerAlt className="input-icon" /><input type="text" placeholder="Endereço da Sede" value={street} onChange={(e) => setStreet(e.target.value)} required /></div>
+                  <div className="input-group"><FaMapMarkerAlt className="input-icon" /><input type="text" placeholder="Rua/avenida" value={street} onChange={(e) => setStreet(e.target.value)} required /></div>
                 </>}
               </>
             )}

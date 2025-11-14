@@ -13,7 +13,8 @@ from rest_framework import serializers
 from .serializers import (
     ProdutorRegistrationSerializer, ColetorRegistrationSerializer,
     CooperativaRegistrationSerializer, LoginSerializer,
-    SolicitacaoColetaCreateSerializer, SolicitacaoColetaListSerializer
+    SolicitacaoColetaCreateSerializer, SolicitacaoColetaListSerializer,
+    SolicitacaoColetaDetailSerializer
 )
 from .models import Produtor, Coletor, Cooperativa, SolicitacaoColeta
 from .permissions import IsProdutor
@@ -67,6 +68,19 @@ class CooperativaRegisterView(generics.CreateAPIView):
             return super().create(request, *args, **kwargs)
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CooperativaListView(generics.ListAPIView):
+    """Lista cooperativas cadastradas (para uso pelo frontend)."""
+    serializer_class = CooperativaRegistrationSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        try:
+            return Cooperativa.objects.all().order_by('id')
+        except Exception as e:
+            print(f"Erro ao listar cooperativas: {e}")
+            return Cooperativa.objects.none()
 
 # --- View de Login Customizada (Atualizada) ---
 
@@ -192,3 +206,104 @@ class DisponiveisSolicitacoesView(generics.ListAPIView):
         except Exception as e:
             print(f"Erro ao buscar solicitações: {e}")
             return SolicitacaoColeta.objects.none()
+
+
+class SolicitacaoColetaDetailView(generics.RetrieveAPIView):
+    """Retorna detalhes de uma solicitação de coleta, incluindo os itens."""
+    queryset = SolicitacaoColeta.objects.all()
+    serializer_class = SolicitacaoColetaDetailSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class MinhasSolicitacoesColetorView(generics.ListAPIView):
+    """Lista as solicitações associadas ao coletor autenticado (coletor.coletas).
+    Retorna solicitações onde `coletor` == coletor autenticado. Usa o serializer detalhado
+    para incluir os itens de coleta no payload, facilitando a exibição no frontend.
+    """
+    serializer_class = SolicitacaoColetaDetailSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        try:
+            auth_payload = getattr(self.request, 'auth_payload', None)
+            # tenta extrair token do header se auth_payload não estiver definido
+            if not auth_payload:
+                auth_header = self.request.headers.get('Authorization')
+                if auth_header and auth_header.startswith('Bearer '):
+                    raw_token = auth_header.split(' ')[1]
+                    from rest_framework_simplejwt.authentication import JWTAuthentication
+                    jwt_auth = JWTAuthentication()
+                    try:
+                        validated = jwt_auth.get_validated_token(raw_token)
+                        auth_payload = getattr(validated, 'payload', None)
+                        if auth_payload:
+                            self.request.auth_payload = auth_payload
+                    except Exception:
+                        auth_payload = None
+
+            if not auth_payload or 'user_id' not in auth_payload or auth_payload.get('user_type') != 'coletor':
+                return SolicitacaoColeta.objects.none()
+
+            coletor_id = auth_payload.get('user_id')
+            coletor_profile = Coletor.objects.filter(pk=coletor_id).first()
+            if not coletor_profile:
+                return SolicitacaoColeta.objects.none()
+
+            return SolicitacaoColeta.objects.filter(coletor=coletor_profile).order_by('-id')
+        except Exception as e:
+            print(f"Erro ao buscar coletas do coletor: {e}")
+            return SolicitacaoColeta.objects.none()
+
+
+class AcceptSolicitacaoView(APIView):
+    """Permite que um Coletor autenticado aceite uma solicitação de coleta.
+    O coletor é recuperado a partir do payload de autenticação (como nas outras views).
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, pk, *args, **kwargs):
+        try:
+            auth_payload = getattr(request, 'auth_payload', None)
+            # Se a autenticação já não foi feita por uma permission (ex: IsProdutor), tentamos extrair o token do header
+            if not auth_payload:
+                auth_header = request.headers.get('Authorization')
+                if auth_header and auth_header.startswith('Bearer '):
+                    raw_token = auth_header.split(' ')[1]
+                    from rest_framework_simplejwt.authentication import JWTAuthentication
+                    jwt_auth = JWTAuthentication()
+                    try:
+                        validated = jwt_auth.get_validated_token(raw_token)
+                        auth_payload = getattr(validated, 'payload', None)
+                        # salva para uso posterior
+                        if auth_payload:
+                            request.auth_payload = auth_payload
+                    except Exception:
+                        auth_payload = None
+
+            if not auth_payload or 'user_id' not in auth_payload or auth_payload.get('user_type') != 'coletor':
+                return Response({'detail': 'Autenticação de coletor necessária.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+            coletor_id = auth_payload.get('user_id')
+            try:
+                coletor_profile = Coletor.objects.get(pk=coletor_id)
+            except Coletor.DoesNotExist:
+                return Response({'detail': 'Perfil de Coletor não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+            try:
+                solicit = SolicitacaoColeta.objects.get(pk=pk)
+            except SolicitacaoColeta.DoesNotExist:
+                return Response({'detail': 'Solicitação não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+            # Verifica se a solicitação ainda está disponível
+            if solicit.status != 'SOLICITADA':
+                return Response({'detail': 'Solicitação não está disponível para aceitação.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            solicit.coletor = coletor_profile
+            solicit.status = 'ACEITA'
+            solicit.save()
+
+            serializer = SolicitacaoColetaDetailSerializer(solicit)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'detail': f'Erro inesperado: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
