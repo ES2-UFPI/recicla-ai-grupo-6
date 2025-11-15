@@ -1,3 +1,8 @@
 from django.contrib import admin
+from .models import Produtor, Coletor, Cooperativa, SolicitacaoColeta, ItemColeta
 
-# Register your models here.
+admin.site.register(Produtor)
+admin.site.register(Coletor)
+admin.site.register(Cooperativa)
+admin.site.register(SolicitacaoColeta)
+admin.site.register(ItemColeta)

@@ -1,6 +1,6 @@
 import React from 'react';
 import './DashboardLayout.css'; // O CSS para o nosso novo layout
-import { FaRecycle, FaSignOutAlt, FaPlusCircle, FaListAlt, FaMapMarkedAlt, FaChartBar, FaUsers } from 'react-icons/fa';
+import { FaRecycle, FaSignOutAlt, FaPlusCircle, FaListAlt, FaMapMarkedAlt, FaChartBar,FaClipboardList, FaDollarSign, FaUsers,FaBoxes } from 'react-icons/fa';
 import { NavLink } from 'react-router-dom'; // Importa o NavLink
 // Definindo as propriedades que o layout receberá
 interface DashboardLayoutProps {
@@ -25,20 +25,27 @@ const renderNavLinks = () => {
           <NavLink to="/minhas-solicitacoes" className="nav-link"><FaListAlt /> Minhas Solicitações</NavLink>
         </>
       );
-    case 'coletor':
-      return (
-        <>
-          <NavLink to="/" end className="nav-link"><FaMapMarkedAlt /> Coletas Disponíveis</NavLink>
-          <NavLink to="/minhas-coletas" className="nav-link"><FaListAlt /> Minhas Coletas</NavLink>
-        </>
-      );
+case 'coletor':
+            return (
+                <>
+                    <NavLink to="/" end className="nav-link"><FaMapMarkedAlt /> Coletas Disponíveis</NavLink>
+
+                    {/* LINK NOVO: MINHAS COLETAS (HISTÓRICO) */}
+                    <NavLink to="/historico" className="nav-link"><FaListAlt /> Minhas Coletas</NavLink>
+
+                    <NavLink to="/inventario" className="nav-link"><FaBoxes /> Inventário</NavLink>
+                    {/* Lembrete: O CSS do NavLink faz ele parecer um link ativo se a rota for a certa */}
+                </>
+            );
     case 'cooperativa':
-      return (
-        <>
-          <NavLink to="/" end className="nav-link"><FaChartBar /> Dashboard</NavLink>
-          <NavLink to="/gerenciar-coletores" className="nav-link"><FaUsers /> Gerenciar Coletores</NavLink>
-        </>
-      );
+            return (
+              <>
+                <NavLink to="/" end className="nav-link"><FaChartBar /> Dashboard</NavLink>
+                <NavLink to="/confirmar-entregas" className="nav-link"><FaClipboardList /> Confirmar Entregas</NavLink>
+                <NavLink to="/meus-interesses" className="nav-link"><FaDollarSign /> Gerenciar Interesses</NavLink>
+                {/* <NavLink to="/gerenciar-coletores" className="nav-link"><FaUsers /> Gerenciar Coletores</NavLink> */}
+              </>
+            );
     default:
       return null;
   }

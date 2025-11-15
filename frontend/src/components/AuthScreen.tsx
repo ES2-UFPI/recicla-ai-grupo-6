@@ -36,6 +36,7 @@ const AuthScreen = (props: Props) => {
   const [cnpj, setCnpj] = useState('');
   const [feedback, setFeedback] = useState('');
   const [errors, setErrors] = useState<Record<string, any> | null>(null);
+  const [cepLoading, setCepLoading] = useState(false);
 
   // Base URL da API: usa REACT_APP_API_URL se definido, caso contrário
   // quando em dev (CRA no localhost:3000) direciona para o backend local 127.0.0.1:8000
@@ -45,6 +46,33 @@ const AuthScreen = (props: Props) => {
   const toggleForm = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsLogin(!isLogin);
+  };
+
+  // Busca endereço pelo CEP usando ViaCEP (https://viacep.com.br)
+  const fetchAddressFromCep = async (rawCep: string) => {
+    const clean = (rawCep || '').replace(/\D/g, '');
+    if (!clean || clean.length !== 8) return;
+    setCepLoading(true);
+    setFeedback('Buscando endereço pelo CEP...');
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
+      const data = await res.json().catch(() => ({}));
+      if (data && !data.erro) {
+        setStreet(data.logradouro || '');
+        setNeighborhood(data.bairro || '');
+        setCity(data.localidade || '');
+        setState(data.uf || '');
+        setFeedback('Endereço preenchido automaticamente.');
+        setErrors(null);
+      } else {
+        setFeedback('CEP não encontrado. Preencha o endereço manualmente.');
+      }
+    } catch (err) {
+      console.error('Erro ao buscar CEP:', err);
+      setFeedback('Falha ao buscar CEP. Verifique sua conexão.');
+    } finally {
+      setCepLoading(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -64,8 +92,10 @@ const AuthScreen = (props: Props) => {
             api.setToken(access);
             setFeedback('Login realizado! Redirecionando...');
             setErrors(null);
+            // tenta extrair o nome retornado pela API; se não houver, usa email como fallback
+            const displayName = data.name || data.nome || data.username || email;
             // avisa App sobre login
-            if (props.onLogin) props.onLogin({ name: email, type: user_type });
+            if (props.onLogin) props.onLogin({ name: displayName, type: user_type });
           } else if (res.status === 401) {
             setFeedback('Credenciais inválidas.');
             setErrors(data || { detail: 'Unauthorized' });
@@ -108,7 +138,7 @@ const AuthScreen = (props: Props) => {
         payload.email = email;
         payload.senha = password;
         payload.telefone = phone;
-        payload.cpf = cpf;
+        payload.cpf_cnpj = cpf;
         payload.cep = cep;
         payload.rua = street;
         payload.numero = number;
@@ -229,7 +259,18 @@ const AuthScreen = (props: Props) => {
 
                 {userType === 'produtor' && <>
                   <div className="input-group"><FaIdCard className="input-icon" /><input type="text" placeholder="CPF" value={cpf} onChange={(e) => setCpf(e.target.value)} required /></div>
-                  <div className="input-group"><FaMapMarkerAlt className="input-icon" /><input type="text" placeholder="CEP" value={cep} onChange={(e) => setCep(e.target.value)} required /></div>
+                  <div className="input-group">
+                    <FaMapMarkerAlt className="input-icon" />
+                    <input
+                      type="text"
+                      placeholder="CEP"
+                      value={cep}
+                      onChange={(e) => { setCep(e.target.value); const clean = e.target.value.replace(/\D/g, ''); if (clean.length === 8) fetchAddressFromCep(clean); }}
+                      onBlur={() => fetchAddressFromCep(cep)}
+                      required
+                    />
+                    {cepLoading && <small className="cep-loading">Buscando endereço...</small>}
+                  </div>
                   <div className="input-group"><FaMapMarkerAlt className="input-icon" /><input type="text" placeholder="Rua, Av..." value={street} onChange={(e) => setStreet(e.target.value)} required /></div>
                   <div className="input-group"><FaHashtag className="input-icon" /><input type="text" placeholder="Número" value={number} onChange={(e) => setNumber(e.target.value)} required /></div>
                 </>}
@@ -240,8 +281,19 @@ const AuthScreen = (props: Props) => {
                 </>}
                 {userType === 'cooperativa' && <>
                   <div className="input-group"><FaBuilding className="input-icon" /><input type="text" placeholder="CNPJ" value={cnpj} onChange={(e) => setCnpj(e.target.value)} required /></div>
-                  <div className="input-group"><FaWarehouse className="input-icon" /><input type="text" placeholder="CEP da Sede" value={cep} onChange={(e) => setCep(e.target.value)} required /></div>
-                  <div className="input-group"><FaMapMarkerAlt className="input-icon" /><input type="text" placeholder="Endereço da Sede" value={street} onChange={(e) => setStreet(e.target.value)} required /></div>
+                  <div className="input-group">
+                    <FaWarehouse className="input-icon" />
+                    <input
+                      type="text"
+                      placeholder="CEP da Sede"
+                      value={cep}
+                      onChange={(e) => { setCep(e.target.value); const clean = e.target.value.replace(/\D/g, ''); if (clean.length === 8) fetchAddressFromCep(clean); }}
+                      onBlur={() => fetchAddressFromCep(cep)}
+                      required
+                    />
+                    {cepLoading && <small className="cep-loading">Buscando endereço...</small>}
+                  </div>
+                  <div className="input-group"><FaMapMarkerAlt className="input-icon" /><input type="text" placeholder="Rua/avenida" value={street} onChange={(e) => setStreet(e.target.value)} required /></div>
                 </>}
               </>
             )}

@@ -71,6 +71,20 @@
   margin-right: 5px;
   transition: background-color 0.2s, color 0.2s;
 }
+
+/* Estilo para o botão de confirmar entrega */
+.confirm-button {
+  background-color: #d4edda;
+  color: #155724;
+  font-weight: 600;
+}
+.confirm-button:hover {
+  background-color: #c3e6cb;
+}
+.confirm-button svg {
+  margin-right: 8px;
+}
+
 .details-button { background-color: #e2e6ea; color: #343a40; }
 .details-button:hover { background-color: #d3d9df; }
 .cancel-button { background-color: #f8d7da; color: #721c24; }

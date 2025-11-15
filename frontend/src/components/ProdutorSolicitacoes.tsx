@@ -1,59 +1,111 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import './Solicitacoes.css'; // Novo CSS para esta tela
+import apiFetch from '../apiFetch';
 
-// Dados de exemplo (mock data) - No futuro, virão da API
-const mockSolicitacoes = [
-  { id: 's001', data: '2025-10-18', status: 'Coletado', coletor: 'Carlos Silva', itens: 3 },
-  { id: 's002', data: '2025-10-19', status: 'Aguardando Coletor', coletor: null, itens: 5 },
-  { id: 's003', data: '2025-10-20', status: 'Em Rota', coletor: 'Maria Souza', itens: 2 },
-  { id: 's004', data: '2025-10-20', status: 'Cancelado', coletor: null, itens: 1 },
-];
+type Solicitacao = {
+  id: string;
+  data?: string;
+  inicio_coleta?: string;
+  fim_coleta?: string;
+  status?: string;
+  status_display?: string;
+  coletor?: string | null;
+  coletor_nome?: string | null;
+  itens?: number;
+  itens_count?: number;
+};
 
 const ProdutorSolicitacoes = () => {
+  const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchSolicitacoes() {
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await apiFetch.request('/api/coletas/minhas/');
+      if (!resp.ok) throw new Error(`Erro na requisição: ${resp.status}`);
+      const data = await resp.json();
+      // assumir que o backend retorna um array de solicitações
+      setSolicitacoes(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      setError(err.message || 'Erro desconhecido ao buscar solicitações');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchSolicitacoes();
+  }, []);
+
+  const formatDateTimeOffset = (value?: string | number | null, hoursToSubtract = 0) => {
+    if (!value) return '—';
+    const d = new Date(value as any);
+    if (isNaN(d.getTime())) return '—';
+    d.setHours(d.getHours() - hoursToSubtract);
+    const date = d.toLocaleDateString('pt-BR');
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    return `${date} ${hours}h${minutes}`;
+  };
+
+  async function handleCancelar(_id: string) {
+    // Cancelamento não implementado no backend atualmente.
+    alert('Cancelamento não disponível: endpoint não implementado no backend.');
+  }
+
   return (
     <div className="solicitacoes-container">
       <h1>Minhas Solicitações de Coleta</h1>
       <p>Acompanhe o status das suas solicitações recentes.</p>
 
-      <table className="solicitacoes-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Data</th>
-            <th>Status</th>
-            <th>Coletor</th>
-            <th>Itens</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {mockSolicitacoes.length === 0 ? (
+      {loading ? (
+        <p>Carregando solicitações...</p>
+      ) : error ? (
+        <p style={{ color: 'red' }}>Erro: {error}</p>
+      ) : (
+        <table className="solicitacoes-table">
+          <thead>
             <tr>
-              <td colSpan={6} style={{ textAlign: 'center' }}>Nenhuma solicitação encontrada.</td>
+              <th>ID</th>
+              <th>Data</th>
+              <th>Status</th>
+              <th>Coletor</th>
+              <th>Itens</th>
+              <th>Ações</th>
             </tr>
-          ) : (
-            mockSolicitacoes.map(sol => (
-              <tr key={sol.id}>
-                <td>{sol.id}</td>
-                <td>{new Date(sol.data).toLocaleDateString('pt-BR')}</td>
-                <td>
-                  <span className={`status-badge status-${sol.status.toLowerCase().replace(' ', '-')}`}>
-                    {sol.status}
-                  </span>
-                </td>
-                <td>{sol.coletor || '-'}</td>
-                <td>{sol.itens}</td>
-                <td>
-                  <button className="action-button details-button">Detalhes</button>
-                  {sol.status === 'Aguardando Coletor' && (
-                     <button className="action-button cancel-button">Cancelar</button>
-                  )}
-                </td>
+          </thead>
+          <tbody>
+            {solicitacoes.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center' }}>Nenhuma solicitação encontrada.</td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              solicitacoes.map(sol => (
+                <tr key={sol.id}>
+                  <td>{sol.id}</td>
+                  <td>{formatDateTimeOffset(sol.inicio_coleta || sol.fim_coleta || Date.now(), 6)}</td>
+                  <td>
+                    <span className={`status-badge status-${(sol.status || '').toString().toLowerCase().replace(' ', '-')}`}>
+                      {sol.status_display || sol.status}
+                    </span>
+                  </td>
+                  <td>{sol.coletor_nome || '-'}</td>
+                  <td>{sol.itens_count ?? '-'}</td>
+                  <td>
+                    <button className="action-button details-button">Detalhes</button>
+                    {sol.status === 'SOLICITADA' && (
+                      <button className="action-button cancel-button" onClick={() => handleCancelar(sol.id)}>Cancelar</button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 };

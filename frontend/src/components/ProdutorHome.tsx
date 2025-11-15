@@ -1,116 +1,119 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../apiFetch';
-import './HomeContent.css'; // Usaremos o mesmo CSS e adicionaremos novos estilos
+import './HomeContent.css';
+import { FaTrash } from 'react-icons/fa6';
+import apiFetch from '../apiFetch';
 
-// Lista de CATEGORIAS (não mais de materiais)
-const CATEGORIAS_DISPONIVEIS = [
-  'Plástico',
-  'Papel',
-  'Vidro',
-  'Metal',
-  'Orgânico',
-  'Eletrônico',
-  'Outro', // Importante para itens não listados
-];
+// ATUALIZADO: Mapeamento de Categorias (apenas as 4 principais)
+// Isso define o que o usuário VÊ (a Unidade)
+const UNIDADES_VISUAIS: Record<string, string> = {
+  'Plástico': 'Sacos (Volume)',
+  'Papel': 'Sacos (Volume)',
+  'Vidro': 'Unidades',
+  'Metal': 'Unidades',
+};
+// Pega apenas os nomes das categorias para o <select>
+const CATEGORIAS_DISPONIVEIS = Object.keys(UNIDADES_VISUAIS);
 
-// Tipo para um item que foi adicionado à lista
+// Mapeamento das labels visuais para os códigos aceitos pelo backend
+const UNIDADE_LABEL_PARA_CODIGO: Record<string, string> = {
+  'Sacos (Volume)': 'VOLUME',
+  'Unidades': 'UN',
+};
+
+// Interface para um item na lista (frontend)
 interface ItemDeColeta {
-  id: string; // Para o React poder identificar cada item
-  descricao: string;
+  id: string; // ID local, apenas para o React
   categoria: string;
+  quantidade: number;
+  unidade: string;
 }
 
 const ProdutorHome = () => {
   // --- Estados para o NOVO formulário ---
 
-  // Estados para o item que está sendo ADICIONADO AGORA
-  const [itemDescricao, setItemDescricao] = useState('');
   const [itemCategoria, setItemCategoria] = useState(CATEGORIAS_DISPONIVEIS[0]);
-
-  // Estado para a LISTA de itens já adicionados
+  const [itemQuantidade, setItemQuantidade] = useState(1);
   const [listaItens, setListaItens] = useState<ItemDeColeta[]>([]);
-
-  // Estados para os outros campos do formulário
+  const [inicioColeta, setInicioColeta] = useState('');
+  const [fimColeta, setFimColeta] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [feedback, setFeedback] = useState('');
 
   // --- Funções do Formulário ---
 
   const handleAddItem = (e: React.MouseEvent) => {
-    e.preventDefault(); // Impede o botão de submeter o formulário inteiro
-    if (!itemDescricao.trim()) {
-      setFeedback('Erro: Por favor, descreva o item antes de adicionar.');
-      return;
-    }
+    e.preventDefault();
+
+    const unidadeVisual = UNIDADES_VISUAIS[itemCategoria];
 
     const novoItem: ItemDeColeta = {
-      id: new Date().toISOString(), // ID único baseado no tempo
-      descricao: itemDescricao,
+      id: new Date().toISOString(),
       categoria: itemCategoria,
+      quantidade: itemQuantidade,
+      unidade: unidadeVisual,
     };
 
-    setListaItens(prevLista => [...prevLista, novoItem]); // Adiciona o novo item à lista
+    setListaItens(prevLista => [...prevLista, novoItem]);
 
-    // Limpa os campos de input
-    setItemDescricao('');
     setItemCategoria(CATEGORIAS_DISPONIVEIS[0]);
+    setItemQuantidade(1);
     setFeedback('');
   };
 
   const handleRemoveItem = (idParaRemover: string) => {
     setListaItens(prevLista => prevLista.filter(item => item.id !== idParaRemover));
   };
-  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFeedback('');
 
     if (listaItens.length === 0) {
-      setFeedback('Erro: Por favor, adicione pelo menos um item à lista de coleta.');
+      setFeedback('Erro: Adicione pelo menos um item à lista de coleta.');
+      return;
+    }
+    if (!inicioColeta || !fimColeta) {
+      setFeedback('Erro: Preencha os horários de início e fim da coleta.');
       return;
     }
 
-    // monta payload conforme contrato da API
-    const inicio = new Date();
-    const fim = new Date(inicio.getTime() + 3 * 60 * 60 * 1000); // +3h padrão
+    const itensParaAPI = listaItens.map(item => ({
+      tipo_residuo: item.categoria,
+      quantidade: item.quantidade,
+      unidade_medida: UNIDADE_LABEL_PARA_CODIGO[item.unidade] || item.unidade,
+    }));
 
-    const payload = {
-      inicio_coleta: inicio.toISOString(),
-      fim_coleta: fim.toISOString(),
+    const solicitacaoDeColeta = {
+      itens: itensParaAPI,
       observacoes: observacoes,
-      itens: listaItens.map(it => ({ nome_residuo: it.descricao, quantidade: 1 }))
+      inicio_coleta: inicioColeta,
+      fim_coleta: fimColeta,
     };
 
-    console.log('Enviando solicitação:', payload);
+    console.log('NOVA SOLICITAÇÃO DE COLETA (enviando para API):', solicitacaoDeColeta);
 
-    api.request('/api/coletas/solicitar/', 'POST', payload)
-      .then(async (res) => {
-        const data = await res.json().catch(() => ({}));
-        console.log('/api/coletas/solicitar/ ->', res.status, data);
-        if (res.status === 201 || res.status === 200) {
-          setFeedback(`Solicitação enviada com sucesso (${listaItens.length} item(s)).`);
-          setListaItens([]);
-          setObservacoes('');
-          // redireciona para a lista de solicitações
-          navigate('/minhas-solicitacoes');
-        } else if (res.status === 400) {
-          setFeedback('Erro: verifique os dados enviados.');
-        } else {
-          setFeedback('Erro desconhecido ao enviar solicitação.');
-        }
-      })
-      .catch((err) => {
-        console.error('Erro ao enviar solicitação:', err);
-        setFeedback('Falha ao conectar ao servidor.');
-      });
+    try {
+      const resp = await apiFetch.solicitarColeta(solicitacaoDeColeta);
+      if (resp.ok) {
+        setFeedback(`Solicitação com ${listaItens.length} tipo(s) de item enviada com sucesso!`);
+        setListaItens([]);
+        setObservacoes('');
+        setInicioColeta('');
+        setFimColeta('');
+      } else {
+        const data = await resp.json().catch(() => null);
+        const errMsg = data && (data.detail || data.message) ? (data.detail || data.message) : `Status ${resp.status}`;
+        setFeedback(`Erro: Não foi possível enviar a solicitação. ${errMsg}`);
+      }
+    } catch (error: any) {
+      setFeedback(`Erro: Falha ao enviar solicitação. ${error?.message || error}`);
+    }
   };
 
   return (
     <div className="home-content">
       <h1>Solicitar Nova Coleta</h1>
-      <p>Adicione os itens que você separou, um por um, e classifique-os.</p>
+      <p>Adicione os materiais que você separou, um por um, e defina a quantidade.</p>
 
       <form className="coleta-form" onSubmit={handleSubmit}>
 
@@ -118,27 +121,40 @@ const ProdutorHome = () => {
         <fieldset className="form-section">
           <legend>1. Adicionar Itens</legend>
           <div className="add-item-form">
+
             <div className="form-group-vertical" style={{ flexGrow: 2 }}>
-              <label htmlFor="itemDescricao">Descrição do Item (ex: "5 garrafas PET", "1 caixa de papelão")</label>
-              <input
-                type="text"
-                id="itemDescricao"
-                value={itemDescricao}
-                onChange={(e) => setItemDescricao(e.target.value)}
-              />
-            </div>
-            <div className="form-group-vertical" style={{ flexGrow: 1 }}>
-              <label htmlFor="itemCategoria">Categoria</label>
+              <label htmlFor="itemCategoria">Categoria do Material</label>
               <select
                 id="itemCategoria"
                 value={itemCategoria}
                 onChange={(e) => setItemCategoria(e.target.value)}
               >
+                {/* Esta lista agora só terá as 4 opções */}
                 {CATEGORIAS_DISPONIVEIS.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
             </div>
+
+            <div className="form-group-vertical" style={{ flexGrow: 1 }}>
+              <label htmlFor="itemQuantidade">Quantidade</label>
+              <input
+                type="number"
+                id="itemQuantidade"
+                value={itemQuantidade}
+                min="1"
+                onChange={(e) => {
+                  const parsed = parseInt(e.target.value as string, 10);
+                  setItemQuantidade(Number.isNaN(parsed) ? 1 : Math.max(1, parsed));
+                }}
+              />
+            </div>
+
+            <div className="form-group-vertical unit-display">
+              <label>Unidade</label>
+              <span>{UNIDADES_VISUAIS[itemCategoria]}</span>
+            </div>
+
             <button type="button" onClick={handleAddItem} className="add-item-btn">Adicionar</button>
           </div>
         </fieldset>
@@ -153,11 +169,13 @@ const ProdutorHome = () => {
               listaItens.map((item) => (
                 <div key={item.id} className="item-adicionado">
                   <div className="item-info">
-                    <span className="item-descricao">{item.descricao}</span>
+                    <span className="item-descricao">
+                      {item.quantidade} {item.unidade}
+                    </span>
                     <span className="item-categoria">{item.categoria}</span>
                   </div>
                   <button type="button" onClick={() => handleRemoveItem(item.id)} className="remove-item-btn">
-                    Remover
+                    <FaTrash /> Remover
                   </button>
                 </div>
               ))
@@ -165,10 +183,22 @@ const ProdutorHome = () => {
           </div>
         </fieldset>
 
-        {/* Seção 3: Detalhes Finais */}
+        {/* Seção 3: Detalhes Finais (COM CAMPOS DE HORA) */}
         <fieldset className="form-section">
           <legend>3. Detalhes Finais</legend>
-          <div className="form-group-vertical">
+
+          <div className="form-row-horizontal">
+            <div className="form-group-vertical">
+              <label htmlFor="inicioColeta">Disponível a partir de:</label>
+              <input type="datetime-local" id="inicioColeta" value={inicioColeta} onChange={(e) => setInicioColeta(e.target.value)} required />
+            </div>
+            <div className="form-group-vertical">
+              <label htmlFor="fimColeta">Disponível até:</label>
+              <input type="datetime-local" id="fimColeta" value={fimColeta} onChange={(e) => setFimColeta(e.target.value)} required />
+            </div>
+          </div>
+
+          <div className="form-group-vertical" style={{ marginTop: '20px' }}>
             <label htmlFor="observacoes">Observações (opcional):</label>
             <textarea
               id="observacoes"
