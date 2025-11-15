@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import permissions
 from rest_framework import serializers
+from rest_framework.permissions import IsAuthenticated
 
 from .serializers import (
     ProdutorRegistrationSerializer, ColetorRegistrationSerializer,
@@ -46,6 +47,29 @@ class ProdutorRegisterView(generics.CreateAPIView):
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+class AtualizarStatusColetaView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def patch(self, request, pk):
+        try:
+            coleta = SolicitacaoColeta.objects.get(pk=pk)
+        except SolicitacaoColeta.DoesNotExist:
+            return Response({"detail": "Coleta não encontrada"}, status=404)
+
+        novo_status = request.data.get("status")
+
+        if novo_status not in ["ACEITA", "CONFIRMADA", "CANCELADA", "SOLICITADA"]:
+            return Response({"detail": "Status inválido"}, status=400)
+
+        coleta.status = novo_status
+        coleta.save()
+
+        return Response({
+            "id": coleta.id,
+            "status": coleta.status
+        })
+
+    
 
 class ColetorRegisterView(generics.CreateAPIView):
     serializer_class = ColetorRegistrationSerializer

@@ -29,9 +29,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-GDAL_LIBRARY_PATH = r"C:\Users\Francisco Rafael\AppData\Local\Programs\OSGeo4W\bin\gdal311.dll"
-GEOS_LIBRARY_PATH = r"C:\Users\Francisco Rafael\AppData\Local\Programs\OSGeo4W\bin\geos_c.dll"
-
+GDAL_LIBRARY_PATH = r"C:\Program Files\QGIS 3.40.11\bin\gdal311.dll"
+GEOS_LIBRARY_PATH = r"C:\Program Files\QGIS 3.40.11\bin\geos_c.dll"
 
 # Application definition
 
@@ -87,9 +86,9 @@ WSGI_APPLICATION = 'reciclaai.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.contrib.gis.db.backends.postgis",
-        "NAME": "recicla-ai",
+        "NAME": "reciclaai",
         "USER": "postgres",
-        "PASSWORD": "root",
+        "PASSWORD": "1234",
         "HOST": "127.0.0.1",
         "PORT": "5432",
     }

@@ -28,5 +28,8 @@ urlpatterns = [
          name='minhas-solicitacoes'),
     path('coletas/disponiveis/', DisponiveisSolicitacoesView.as_view(),
          name='coletas-disponiveis'),
+    path("coletas/<int:pk>/status/", views.AtualizarStatusColetaView.as_view(),
+     name="atualizar-status-coleta"),
+    
     # path('list_cooperativas/', views.escolha_cooperativa_view, name='list-cooperativas'),
 ]

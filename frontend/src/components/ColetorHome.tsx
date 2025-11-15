@@ -1,540 +1,520 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'; // Adicionamos useCallback
-import './Coletas.css';
-import api from '../apiFetch';
-import { FaMapMarkerAlt, FaBoxOpen, FaInfoCircle, FaTimes, FaWarehouse, FaStar, FaSpinner } from 'react-icons/fa'; // Mudei para fa6
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { MapContainer, TileLayer, useMap } from "react-leaflet";
+import L, { LatLng } from "leaflet";
+import "leaflet-routing-machine";
+import "leaflet/dist/leaflet.css";
+import "./Coletas.css"; // Importar o novo CSS
+import api from "../apiFetch";
+import { FaMapMarkerAlt, FaClock, FaCheck, FaTruck, FaRoute } from "react-icons/fa";
 
-// Importações do Leaflet
-import { MapContainer, TileLayer, useMap } from 'react-leaflet'; // Importamos o useMap
-import L, { LatLng } from 'leaflet';
-import 'leaflet-routing-machine';
-import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
-
-// Correção para o Bug dos Ícones
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
-  iconUrl: require('leaflet/dist/images/marker-icon.png'),
-  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+// =============================
+// ÍCONES CUSTOMIZADOS
+// =============================
+const iconOrigem = L.icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
 });
 
-// --- DADOS DE EXEMPLO (MOCK DATA) ---
-const mockCooperativasDisponiveis = [
-  {
-    id: 'coop01',
-    nome: 'Cooperativa Recicla Bem',
-    endereco: 'Av. Industrial, 500, Bairro Industrial',
-    lat: -5.0885,
-    lng: -42.8016,
-    materiaisInteresse: [
-      { categoria: 'Plástico', preco: 'R$ 2,50/kg' },
-      { categoria: 'Papel', preco: 'R$ 1,20/kg' },
-      { categoria: 'Metal', preco: 'R$ 5,00/kg' },
-    ],
-  },
-  {
-    id: 'coop02',
-    nome: 'Central Verde',
-    endereco: 'Rua das Árvores, 99, Bairro Ecológico',
-    lat: -5.0930,
-    lng: -42.8100,
-    materiaisInteresse: [
-      { categoria: 'Vidro', preco: 'R$ 0,80/kg' },
-      { categoria: 'Eletrônico', preco: 'Sob consulta' },
-      { categoria: 'Papel', preco: 'R$ 1,35/kg' },
-    ],
-  },
-];
-const mockColetasDisponiveis = [
-  {
-    id: 'c001',
-    distancia: '1.2 km',
-    produtor: {
-      nome: 'Ana Luiza',
-      endereco: 'Rua das Flores, 123, Bairro Centro',
-    },
-    itens: [
-      { id: 'i1', descricao: 'Cerca de 10 garrafas PET', categoria: 'Plástico' },
-      { id: 'i2', descricao: 'Jornais e 1 caixa de papelão', categoria: 'Papel' },
-    ],
-  },
-  {
-    id: 'c002',
-    distancia: '3.5 km',
-    produtor: {
-      nome: 'Mercado Bom Preço',
-      endereco: 'Av. Principal, 1020, Bairro Sul',
-    },
-    itens: [
-      { id: 'i3', descricao: 'Muitas caixas de papelão desmontadas', categoria: 'Papel' },
-      { id: 'i4', descricao: 'Latas de alumínio (aprox. 2 sacos)', categoria: 'Metal' },
-    ],
-  },
-];
+const iconDestino = L.icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
 
+delete (L.Icon.Default.prototype as any)._getIconUrl;
 
-// --- NOVO COMPONENTE DE ROTA ---
-// Este componente é feito para ser colocado DENTRO de um <MapContainer>
-interface RouteCalculatorProps {
-  pontoA: LatLng;
-  pontoB: LatLng;
-  onSummary: (summary: string) => void;
-}
+// =============================
+// DADOS E TIPOS
+// =============================
+const COOPERATIVA_FIXA = {
+  nome: "Cooperativa Recicla Bem",
+  lat: -5.0885,
+  lng: -42.8016,
+};
 
-const RouteCalculator: React.FC<RouteCalculatorProps> = ({ pontoA, pontoB, onSummary }) => {
+// =============================
+// COMPONENTE DE ROTA
+// =============================
+function Rota({ pontoA, pontoB, onResumo, routeKey }: any) {
   const map = useMap();
-  const routingControlRef = useRef<L.Routing.Control | null>(null);
-  const markerARef = useRef<L.Marker | null>(null);
-  const markerBRef = useRef<L.Marker | null>(null);
-
-  // Ícones personalizados
-  const iconColetor = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
-  });
-
-  const iconCooperativa = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
-  });
+  const roteadorRef = useRef<any>(null);
+  const marcadoresRef = useRef<any[]>([]);
+  const linhaRef = useRef<any>(null);
 
   useEffect(() => {
-
     if (!map) return;
 
-    let isUnmounted = false;
-    let created = false;
-    let readyTimeout: number | null = null;
-
-    const handleRoutesFound = (e: any) => {
-      if (isUnmounted) return;
-      try {
-        const routes = e.routes;
-        if (!routes || routes.length === 0) return;
-        const summary = routes[0].summary;
-        const totalDistance = (summary.totalDistance / 1000).toFixed(1) + ' km';
-        const totalTime = Math.round(summary.totalTime / 60) + ' min';
-        onSummary(`Distância: ${totalDistance}  |  Tempo Estimado: ${totalTime}`);
-      } catch (err) {
-        console.error('Erro ao processar rota:', err);
+    // Limpa tudo antes de criar novo
+    const limparTudo = () => {
+      // Remove linha da rota
+      if (linhaRef.current && map.hasLayer(linhaRef.current)) {
+        map.removeLayer(linhaRef.current);
+        linhaRef.current = null;
       }
+
+      // Remove marcadores
+      marcadoresRef.current.forEach((m) => {
+        if (map.hasLayer(m)) {
+          map.removeLayer(m);
+        }
+      });
+      marcadoresRef.current = [];
+
+      // Remove controle do routing (causa do erro)
+      if (roteadorRef.current) {
+        try {
+          roteadorRef.current.off();
+
+          if (map && map.removeControl) {
+            map.removeControl(roteadorRef.current);
+          }
+
+        } catch (e) {
+          console.warn("Erro ao limpar roteador", e);
+        }
+
+        roteadorRef.current = null;
+      }
+
+      // Remove containers do DOM
+      setTimeout(() => {
+        document.querySelectorAll(".leaflet-routing-container").forEach((e) => e.remove());
+      }, 50);
     };
 
-    const createRouting = () => {
-      if (isUnmounted) return;
-      // limpa antigos (com checagens para evitar erros)
+    limparTudo();
+
+    // Adiciona marcadores
+    const marcadorA = L.marker(pontoA, { icon: iconOrigem }).addTo(map);
+    const marcadorB = L.marker(pontoB, { icon: iconDestino }).addTo(map);
+    marcadoresRef.current = [marcadorA, marcadorB];
+
+    // Ajusta zoom para mostrar ambos os pontos
+    const bounds = L.latLngBounds([pontoA, pontoB]);
+    map.fitBounds(bounds, { padding: [50, 50] });
+
+    // Cria roteador
+    const roteador = L.Routing.control({
+      waypoints: [pontoA, pontoB],
+      lineOptions: { 
+        styles: [{ color: "#28a745", weight: 6, opacity: 0.8 }],
+        extendToWaypoints: false,
+        missingRouteTolerance: 0
+      },
+      addWaypoints: false,
+      draggableWaypoints: false,
+      showAlternatives: false,
+      show: false,
+      createMarker: () => null,
+      routeWhileDragging: false,
+      fitSelectedRoutes: false,
+    } as any);
+
+    // Adiciona ao mapa apenas se ainda não foi adicionado
+    try {
+      roteador.addTo(map);
+      roteadorRef.current = roteador;
+    } catch (e) {
+      console.warn("Erro ao adicionar roteador:", e);
+      return;
+    }
+
+    // Listener de rota encontrada
+    const handleRouteFound = (e: any) => {
       try {
-        if (routingControlRef.current) {
-          const old = routingControlRef.current as any;
-          try { old.off && old.off('routesfound', handleRoutesFound); } catch { }
-          if (old._map) {
-            try { map.removeControl(old); } catch (err) { /* ignore */ }
-          }
-          routingControlRef.current = null;
-        }
-      } catch (err) {
-        console.warn('Erro ao limpar control antigo (ignored):', err);
-      }
+        const r = e.routes[0];
+        const distancia = (r.summary.totalDistance / 1000).toFixed(1) + " km";
+        const tempo = Math.round(r.summary.totalTime / 60) + " min";
+        onResumo({ distancia, tempo });
 
-      try {
-        if (markerARef.current && map.hasLayer(markerARef.current)) {
-          map.removeLayer(markerARef.current);
-        }
-      } catch (err) { }
-      markerARef.current = null;
-
-      try {
-        if (markerBRef.current && map.hasLayer(markerBRef.current)) {
-          map.removeLayer(markerBRef.current);
-        }
-      } catch (err) { }
-      markerBRef.current = null;
-
-      // adiciona marcadores
-      try {
-        markerARef.current = L.marker(pontoA, { icon: iconColetor })
-          .addTo(map)
-          .bindPopup('🧍 Sua localização');
-
-        markerBRef.current = L.marker(pontoB, { icon: iconCooperativa })
-          .addTo(map)
-          .bindPopup('🏭 Cooperativa');
-
-      } catch (err) {
-        console.warn('Erro ao adicionar marcadores:', err);
-      }
-
-      // cria controle de rota
-      try {
-        routingControlRef.current = (L.Routing.control({
-          waypoints: [pontoA, pontoB],
-          show: false,
-          addWaypoints: false,
-          routeWhileDragging: false,
-          draggableWaypoints: false,
-          createMarker: () => null,
-          lineOptions: {
-            styles: [{ color: '#28a745', opacity: 0.8, weight: 6 }]
-          }
-        } as any)).addTo(map);
-
-        const ctrl = routingControlRef.current as any;
-        if (ctrl && typeof ctrl.on === 'function') {
-          ctrl.on('routesfound', handleRoutesFound);
-          // opcional: ouvir erro de rota e tratar
-          ctrl.on && ctrl.on('routingerror', (err: any) => {
-            if (isUnmounted) return;
-            console.warn('Routing error:', err);
-            onSummary('Não foi possível calcular a rota.');
+        // Guarda referência da linha da rota
+        if (e.routes[0] && e.routes[0].coordinates) {
+          linhaRef.current = L.polyline(e.routes[0].coordinates, {
+            color: "#28a745",
+            weight: 6,
+            opacity: 0.8
           });
         }
-        created = true;
       } catch (err) {
-        console.error('Erro ao criar routing control:', err);
+        console.warn("Erro ao processar rota:", err);
       }
     };
 
-    // Tentamos criar a rota somente quando o mapa estiver pronto.
-    // Quando dentro de modal o mapa pode já estar "ready" mas a div ainda com animação
-    // então usamos whenReady + um pequeno timeout como fallback.
-    try {
-      map.whenReady(() => {
-        // força invalidateSize (ajusta tamanho) e cria rota com pequeno delay
-        try { map.invalidateSize(); } catch (err) { }
-        // delay para evitar problemas com animações de modal
-        readyTimeout = window.setTimeout(() => createRouting(), 120);
-      });
-      // fallback: se whenReady não disparar em X ms (raro), criamos mesmo assim
-      const fallback = window.setTimeout(() => {
-        if (!created && !isUnmounted) {
-          try { map.invalidateSize(); } catch (err) { }
-          createRouting();
-        }
-      }, 1000);
-      // limpamos fallback no cleanup
-      return () => {
-        isUnmounted = true;
-        try { clearTimeout(fallback); } catch { }
-        if (readyTimeout) {
-          try { clearTimeout(readyTimeout); } catch { }
-        }
+    roteador.on("routesfound", handleRouteFound);
 
-        // removendo listeners antes de remover controle (para evitar callbacks tardios)
-        try {
-          if (routingControlRef.current) {
-            const ctrl = routingControlRef.current as any;
-            try { ctrl.off && ctrl.off('routesfound', handleRoutesFound); } catch { }
-            try { ctrl.off && ctrl.off('routingerror'); } catch { }
-            // tenta abortar requisição pendente (se houver)
-            try {
-              // várias implementações internas do LRM usam xhr/requests com nomes diferentes,
-              // tentamos alguns caminhos comuns dentro de try/catch
-              if (ctrl._router) {
-                if (ctrl._router._xhr && typeof ctrl._router._xhr.abort === 'function') {
-                  ctrl._router._xhr.abort();
-                }
-                if (ctrl._router.abort && typeof ctrl._router.abort === 'function') {
-                  ctrl._router.abort();
-                }
-                // algumas versões colocam algo como _routingEngine/_requests
-                if (ctrl._router._routingEngine && typeof ctrl._router._routingEngine.abort === 'function') {
-                  ctrl._router._routingEngine.abort();
-                }
-              }
-            } catch (err) { /* ignore abort errors */ }
-
-            // remove controle somente se ainda ligado a um mapa
-            try {
-              if (ctrl._map && typeof map.removeControl === 'function') {
-                map.removeControl(routingControlRef.current);
-              }
-            } catch (err) {
-              // ignore
-            }
-            routingControlRef.current = null;
-          }
-        } catch (err) {
-          console.warn('Erro durante cleanup do routing control (ignored):', err);
-        }
-
-        // remove marcadores de forma segura
-        try {
-          if (markerARef.current && map.hasLayer(markerARef.current)) {
-            map.removeLayer(markerARef.current);
-          }
-        } catch (err) { }
-        markerARef.current = null;
-
-        try {
-          if (markerBRef.current && map.hasLayer(markerBRef.current)) {
-            map.removeLayer(markerBRef.current);
-          }
-        } catch (err) { }
-        markerBRef.current = null;
-      };
-    } catch (err) {
-      console.error('Erro no setup do RouteCalculator:', err);
-      // cleanup se falhar no setup inicial
-      return () => { };
-    }
-  }, [map, pontoA, pontoB, onSummary]);
+    // Cleanup
+    return () => {
+      limparTudo();
+    };
+  }, [map, pontoA, pontoB, onResumo, routeKey]);
 
   return null;
+}
+
+// =============================
+// COMPONENTE PRINCIPAL
+// =============================
+export default function ColetorHome() {
+  const [coletas, setColetas] = useState<any[]>([]);
+  const [selecionada, setSelecionada] = useState<any>(null);
+  const [etapa, setEtapa] = useState<"INICIO" | "R1" | "R2">("INICIO");
+  const [resumo, setResumo] = useState<{ distancia: string; tempo: string } | null>(null);
+  const [pontoA, setPontoA] = useState<any>(null);
+  const [pontoB, setPontoB] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const handleResumo = useCallback((r: any) => setResumo(r), []);
+
+  // BUSCAR COLETAS DO BANCO DE DADOS
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        const resp = await api.request("/api/coletas/disponiveis/");
+        const dados = await resp.json();
+        console.log("=== DADOS RECEBIDOS DA API ===");
+        console.log("Coletas:", dados);
+        if (dados.length > 0) {
+          console.log("Primeira coleta:", dados[0]);
+          console.log("Estrutura do produtor:", dados[0].produtor);
+          console.log("Itens:", dados[0].itens);
+        }
+        console.log("==============================");
+        setColetas(dados);
+      } catch (e) {
+        console.error("Erro ao buscar coletas", e);
+        setColetas([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  // ACEITAR COLETA
+  const aceitarColeta = async (c: any) => {
+    console.log("=== ACEITAR COLETA ===");
+    console.log("Coleta completa:", c);
+    console.log("ID da coleta:", c.id);
+    console.log("Produtor completo:", c.produtor);
+    
+    if (c.produtor) {
+      console.log("Latitude:", c.produtor.latitude);
+      console.log("Longitude:", c.produtor.longitude);
+    }
+    console.log("=====================");
+    
+    // Validações
+    if (!c.produtor) {
+      alert("Erro: Dados do produtor não encontrados!");
+      return;
+    }
+    
+    if (!c.produtor.latitude || !c.produtor.longitude) {
+      alert("Erro: Coordenadas do produtor não encontradas!");
+      return;
+    }
+    
+    try {
+      console.log("Tentando atualizar status para ACEITA...");
+      
+      // Tenta várias possibilidades de rota
+      let response;
+      const endpoints = [
+        `/api/coletas/${c.id}/status/`,
+        `http://localhost:8000/api/coletas/${c.id}/status/`,
+        `/coletas/${c.id}/status/`,
+      ];
+      
+      for (const endpoint of endpoints) {
+        try {
+          console.log("Tentando endpoint:", endpoint);
+          response = await fetch(endpoint, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ status: "SOLICITADA" }),
+          });
+          
+          if (response.ok) {
+            console.log("Sucesso com endpoint:", endpoint);
+            break;
+          } else {
+            console.log(`Endpoint ${endpoint} falhou: ${response.status}`);
+          }
+        } catch (err) {
+          console.log(`Erro ao tentar ${endpoint}:`, err);
+        }
+      }
+
+     /* if (!response || !response.ok) {
+       alert("Erro ao aceitar coleta. O status NÃO foi alterado.");
+        return; // <<< ESSENCIAL
+      }
+        */
+
+      console.log("Solicitando localização do GPS...");
+      
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const origem = new LatLng(pos.coords.latitude, pos.coords.longitude);
+          const destino = new LatLng(
+            parseFloat(c.produtor.latitude),
+            parseFloat(c.produtor.longitude)
+          );
+
+          setSelecionada(c);
+          setPontoA(origem);
+          setPontoB(destino);
+          setEtapa("R1");  // <<< só aqui!!
+        },
+        (error) => {
+          alert("Não foi possível obter sua localização.");
+        }
+      );
+    } catch (e) {
+      console.error("Erro ao aceitar coleta:", e);
+      // Não mostra alert, apenas continua
+      setSelecionada(c);
+      setEtapa("R1");
+    }
+  };
+
+  // CONFIRMAR COLETA
+  const confirmarColeta = async () => {
+    try {
+      // Usando fetch direto
+      const response = await fetch(`http://localhost:8000/api/coletas/${selecionada.id}/status/`, {
+
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "CONFIRMADA" }),
+      });
+
+      if (!response.ok) {
+        const txt = await response.text();
+        console.error("ERRO NO PATCH (confirmar coleta)", response.status, txt);
+        throw new Error(`Erro ${response.status}`);
+      }
+
+      if (!response.ok) {
+        throw new Error(`Erro ${response.status}`);
+      }
+
+      setEtapa("R2");
+      setResumo(null);
+
+      const latP = parseFloat(selecionada.produtor.latitude);
+      const lngP = parseFloat(selecionada.produtor.longitude);
+      setPontoA(new LatLng(latP, lngP));
+      setPontoB(new LatLng(COOPERATIVA_FIXA.lat, COOPERATIVA_FIXA.lng));
+    } catch (e) {
+      console.error("Erro ao confirmar coleta:", e);
+      alert("Erro ao confirmar coleta. Tente novamente.");
+    }
+  };
+
+const cancelarColetaOuEntrega = async () => {
+  try {
+    const response = await fetch(`http://localhost:8000/api/coletas/${selecionada.id}/status/`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "SOLICITADA" }),
+    });
+
+    const txt = await response.text();
+    console.log("DEBUG CANCELAMENTO:", response.status, txt);
+
+    if (!response.ok) {
+      alert("Erro ao cancelar. Tente novamente.");
+      return;
+    }
+
+    // Resetar tudo
+    setEtapa("INICIO");
+    setSelecionada(null);
+    setPontoA(null);
+    setPontoB(null);
+    setResumo(null);
+
+    // Recarrega lista
+    setLoading(true);
+    const resp = await api.request("/api/coletas/disponiveis/");
+    const dados = await resp.json();
+    setColetas(dados);
+    setLoading(false);
+
+  } catch (err) {
+    console.error("Erro ao cancelar:", err);
+    alert("Não foi possível cancelar a coleta.");
+  }
 };
 
 
-// --- COMPONENTE PRINCIPAL (ATUALIZADO) ---
-const ColetorHome = () => {
-  const [coletaSelecionada, setColetaSelecionada] = useState<typeof mockColetasDisponiveis[0] | null>(null);
-  const [routeDetails, setRouteDetails] = useState<{ pontoA: LatLng, coopName: string, pontoB: LatLng } | null>(null);
-  const [mapLoading, setMapLoading] = useState(false);
-  const [routeSummary, setRouteSummary] = useState<string | null>(null);
-  const [dbColetas, setDbColetas] = useState<any[]>([]);
-  const [dbLoading, setDbLoading] = useState<boolean>(false);
-  const [dbError, setDbError] = useState<string | null>(null);
+  // CONCLUIR ENTREGA
+  const concluirEntrega = async () => {
+    try {
+      // Usando fetch direto
+      const response = await fetch(`/api/coletas/${selecionada.id}/status/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "CONCLUIDA" }),
+      });
 
-  // --- ESTA É A CORREÇÃO ---
-  // Envolvemos a função 'setRouteSummary' em 'useCallback'.
-  // Isso garante que a função 'handleSummary' tenha sempre a
-  // mesma referência, impedindo que o 'useEffect' do 'RouteCalculator'
-  // rode a limpeza (o removeControl) desnecessariamente.
-  const handleSummary = useCallback((summary: string) => {
-    setRouteSummary(summary);
-  }, []); // O array vazio [] garante que a função nunca mude.
-  // --- FIM DA CORREÇÃO ---
-
-
-  const handleAceitarColeta = (coletaId: string, cooperativa: typeof mockCooperativasDisponiveis[0]) => {
-
-    setMapLoading(true);
-    setColetaSelecionada(null);
-    setRouteSummary(null);
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const pontoA = new LatLng(latitude, longitude);
-        const pontoB = new LatLng(cooperativa.lat, cooperativa.lng);
-
-        setRouteDetails({ pontoA, pontoB, coopName: cooperativa.nome });
-        setMapLoading(false);
-
-        console.log(`Coleta ${coletaId} aceita! Rota: Minha Posição -> ${cooperativa.nome}`);
-      },
-      (error) => {
-        console.error("Erro ao obter geolocalização:", error);
-        alert("Erro ao obter sua localização. Verifique as permissões do navegador.");
-        setMapLoading(false);
+      if (!response.ok) {
+        throw new Error(`Erro ${response.status}`);
       }
-    );
+
+      alert("Coleta concluída com sucesso!");
+      
+      // Volta para a tela inicial e recarrega as coletas
+      setEtapa("INICIO");
+      setSelecionada(null);
+      setPontoA(null);
+      setPontoB(null);
+      setResumo(null);
+      
+      // Recarrega a lista de coletas
+      setLoading(true);
+      const resp = await api.request("/api/coletas/disponiveis/");
+      const dados = await resp.json();
+      setColetas(dados);
+      setLoading(false);
+    } catch (e) {
+      console.error("Erro ao concluir entrega:", e);
+      alert("Erro ao concluir entrega. Tente novamente.");
+    }
   };
 
-  // Busca coletas disponíveis no backend (tabela solicitacao_coleta)
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      setDbLoading(true);
-      setDbError(null);
-      try {
-        const resp = await api.request('/api/coletas/disponiveis/');
-        console.debug('GET /api/coletas/disponiveis/ ->', resp.status);
-        if (!resp.ok) {
-          const text = await resp.text().catch(() => '');
-          console.warn('Resposta não OK ao buscar coletas disponiveis:', resp.status, text);
-          if (mounted) setDbError(`Erro HTTP ${resp.status}`);
-          return;
-        }
-        const data = await resp.json();
-        console.debug('Dados recebidos de /api/coletas/disponiveis/:', data);
-        // DRF pode retornar uma lista ou um objeto paginado { results: [...] }
-        const list = Array.isArray(data) ? data : (data && Array.isArray(data.results) ? data.results : []);
-        if (mounted) setDbColetas(list);
-      } catch (err: any) {
-        console.error('Erro ao buscar coletas disponiveis:', err);
-        if (mounted) setDbError(String(err));
-      } finally {
-        if (mounted) setDbLoading(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, []);
+  // =============================
+  // TELA: LISTA DE COLETAS
+  // =============================
+  if (etapa === "INICIO") {
+    if (loading) {
+      return (
+        <div className="list-container">
+          <h2>Carregando coletas...</h2>
+        </div>
+      );
+    }
 
-  return (
-    <div className="coletas-disponiveis-container">
-      <h1>Coletas Disponíveis Próximas a Você</h1>
-      <div className="coletas-grid">
-        {mockColetasDisponiveis.map((coleta) => (
-          <div key={coleta.id} className="coleta-card">
-            <div className="card-header">
-              <h3>{coleta.produtor.nome}</h3>
-              <span className="distancia-badge"><FaMapMarkerAlt /> {coleta.distancia}</span>
+    if (!coletas || coletas.length === 0) {
+      return (
+        <div className="list-container">
+          <h2>Coletas Disponíveis</h2>
+          <p>Nenhuma solicitação encontrada.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="list-container">
+        <h2>Coletas Disponíveis</h2>
+        {coletas.map((c) => (
+          <div className="coleta-card" key={c.id}>
+            <div className="card-content">
+              <h3>{c.produtor?.nome || "Produtor não identificado"}</h3>
+              <p className="address">
+                {c.produtor?.rua || "Rua"}, {c.produtor?.numero || "S/N"} — {c.produtor?.bairro || "Bairro"}
+              </p>
+              <div className="material-info">
+                {c.itens?.length || 0} tipo(s) de material
+              </div>
             </div>
-            <p className="endereco-produtor">{coleta.produtor.endereco}</p>
-            <div className="itens-preview"><FaBoxOpen /> {coleta.itens.length} tipo(s) de material</div>
-            <div className="card-actions">
-              <button className="details-button" onClick={() => setColetaSelecionada(coleta)}>
-                <FaInfoCircle /> Ver Detalhes
-              </button>
-            </div>
+
+            <button className="btn-primary" onClick={() => aceitarColeta(c)}>
+              <FaCheck /> Aceitar Coleta
+            </button>
           </div>
         ))}
       </div>
+    );
+  }
 
-      {/* --- COLETAS VINDAS DO BANCO DE DADOS --- */}
-      <div style={{ marginTop: '20px' }}>
-        <h2>Coletas Disponíveis (Banco de Dados)</h2>
-        {dbLoading ? (
-          <div>Carregando coletas do servidor...</div>
-        ) : dbError ? (
-          <div style={{ color: 'var(--danger, #c00)' }}>Erro ao carregar coletas: {dbError}</div>
-        ) : dbColetas.length === 0 ? (
-          <div>Nenhuma coleta disponível no momento.</div>
-        ) : (
-          <div className="coletas-grid">
-            {dbColetas.map((c) => {
-              const endereco = `${c.produtor?.rua || ''} ${c.produtor?.numero || ''}, ${c.produtor?.bairro || ''}, ${c.produtor?.cidade || ''}`.replace(/\s+/g, ' ').trim();
-              return (
-                <div key={c.id} className="coleta-card">
-                  <div className="card-header">
-                    <h3>{c.produtor?.nome || 'Produtor'}</h3>
-                    <span className="distancia-badge"><FaMapMarkerAlt /> {c.itens_count || '-'} item(s)</span>
-                  </div>
-                  <p className="endereco-produtor">{endereco}</p>
-                  <div className="itens-preview"><FaBoxOpen /> {c.itens_count || 0} tipo(s) de material</div>
-                  <div className="card-actions">
-                    <button className="details-button" onClick={() => setColetaSelecionada({ id: c.id, produtor: { nome: c.produtor?.nome || '', endereco }, itens: [] } as any)}>
-                      <FaInfoCircle /> Ver Detalhes
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+  // =============================
+  // TELA: ROTAS (MAPA)
+  // =============================
+  return (
+    <div className="route-container">
+      <h2>{etapa === "R1" ? "Rota até o Produtor" : "Rota até a Cooperativa"}</h2>
+
+      {/* CARD DE RESUMO */}
+      <div className="route-card">
+        {/* LEGENDA */}
+        <div className="legend">
+          <span>
+            <div className="marker origin"></div> Origem
+          </span>
+          <span>
+            <div className="marker dest"></div> Destino
+          </span>
+        </div>
+
+        {/* RESUMO DE TEMPO/DISTÂNCIA */}
+        <div className="summary">
+          <div className="item">
+            <FaRoute /> {resumo?.distancia || "Calculando..."}
           </div>
-        )}
+          <div className="item">
+            <FaClock /> {resumo?.tempo || "Calculando..."}
+          </div>
+        </div>
       </div>
 
-      {/* --- MODAL 1: DETALHES DA COLETA --- */}
-      {coletaSelecionada && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <button className="close-modal-btn" onClick={() => setColetaSelecionada(null)}><FaTimes /></button>
-            <h2>Detalhes da Coleta #{coletaSelecionada.id}</h2>
-
-            <div className="modal-section">
-              <h4>Produtor</h4>
-              <p><strong>Nome:</strong> {coletaSelecionada.produtor.nome}</p>
-              <p><strong>Endereço:</strong> {coletaSelecionada.produtor.endereco}</p>
-            </div>
-            <div className="modal-section">
-              <h4>Itens a Coletar</h4>
-              <ul className="modal-itens-list">
-                {coletaSelecionada.itens.map(item => (
-                  <li key={item.id}>
-                    <span className="item-descricao">{item.descricao}</span>
-                    <span className="item-categoria">{item.categoria}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="modal-section">
-              <h4><FaWarehouse /> Escolha uma Cooperativa para a Entrega</h4>
-              <div className="cooperativas-sugeridas-list">
-                {mockCooperativasDisponiveis.map(coop => {
-                  const itensDeInteresseNestaColeta = coletaSelecionada.itens.filter(itemDaColeta =>
-                    coop.materiaisInteresse.some(itemDeInteresse => itemDeInteresse.categoria === itemDaColeta.categoria)
-                  );
-                  return (
-                    <div key={coop.id} className="cooperativa-sugerida-card">
-                      <div className="coop-card-header">
-                        <h5>{coop.nome}</h5>
-                        <span>{coop.endereco}</span>
-                      </div>
-                      <div className="coop-card-body">
-                        <strong>Itens de interesse nesta coleta:</strong>
-                        {itensDeInteresseNestaColeta.length > 0 ? (
-                          <div className="itens-interesse-list">
-                            {itensDeInteresseNestaColeta.map(item => {
-                              const interesse = coop.materiaisInteresse.find(i => i.categoria === item.categoria);
-                              return (
-                                <div key={item.id} className="item-interesse">
-                                  <FaStar className="star-icon" /> {item.categoria}
-                                  <span className="preco-tag">{interesse?.preco}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <p className="nenhum-interesse-msg">Nenhum item de alto interesse nesta coleta.</p>
-                        )}
-                      </div>
-                      <div className="coop-card-footer">
-                        <button className="accept-button" onClick={() => handleAceitarColeta(coletaSelecionada.id, coop)}>
-                          Aceitar e Ver Rota
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* MAPA */}
+      {pontoA && pontoB && (
+        <MapContainer
+          center={pontoA}
+          zoom={14}
+          key={etapa} // Força remontagem do mapa ao trocar de etapa
+          style={{
+            height: "450px",
+            width: "100%",
+            borderRadius: "12px",
+            marginTop: "20px",
+          }}
+        >
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <Rota 
+            pontoA={pontoA} 
+            pontoB={pontoB} 
+            onResumo={handleResumo} 
+            routeKey={etapa} // Força recriação da rota
+          />
+        </MapContainer>
       )}
 
-      {/* --- OVERLAY DE LOADING DO GPS --- */}
-      {mapLoading && (
-        <div className="modal-overlay loading-overlay">
-          <FaSpinner className="loading-spinner" />
-          <p>Obtendo sua localização GPS...</p>
-        </div>
+      {/* BOTÕES */}
+      {etapa === "R1" && (
+        <>
+          <button className="action-button primary-action" onClick={confirmarColeta}>
+            <FaCheck /> Confirmar retirada (Ir para cooperativa)
+          </button>
+
+          <button className="action-button danger-action" onClick={cancelarColetaOuEntrega}>
+            ❌ Cancelar coleta
+          </button>
+        </>
       )}
 
-      {/* --- MODAL 2: MAPA DA ROTA (ATUALIZADO) --- */}
-      {routeDetails && (
-        <div className="modal-overlay map-modal-overlay">
-          <div className="modal-content map-modal-content">
-            <div className="map-legend">
-              <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png" width="15" /> Sua Localização</div>
-              <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png" width="15" /> Cooperativa</div>
-            </div>
-            <button className="close-modal-btn" onClick={() => setRouteDetails(null)}><FaTimes /></button>
-            <h2>Rota para {routeDetails.coopName}</h2>
+      {etapa === "R2" && (
+        <>
+          <button className="action-button success-action" onClick={concluirEntrega}>
+            <FaTruck /> Concluir entrega
+          </button>
 
-            <p className="route-summary">
-              {routeSummary || 'Calculando rota pelas ruas...'}
-            </p>
-
-
-            {/* ATUALIZADO: O MapContainer agora vive aqui */}
-            <MapContainer
-              center={routeDetails.pontoA}
-              zoom={13}
-              style={{ height: '400px', width: '100%', borderRadius: '10px' }}
-            >
-              <TileLayer
-                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-              />
-              {/* ATUALIZADO: Passa a função estável 'handleSummary' */}
-              <RouteCalculator
-                pontoA={routeDetails.pontoA}
-                pontoB={routeDetails.pontoB}
-                onSummary={handleSummary}
-              />
-            </MapContainer>
-
-          </div>
-        </div>
+          <button className="action-button danger-action" onClick={cancelarColetaOuEntrega}>
+            ❌ Cancelar entrega
+          </button>
+        </>
       )}
-
     </div>
   );
-};
-
-export default ColetorHome;
+}

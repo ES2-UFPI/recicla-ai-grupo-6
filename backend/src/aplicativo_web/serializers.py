@@ -1,9 +1,47 @@
 # backend/src/aplicativo_web/serializers.py
 from rest_framework import serializers
 from .models import Produtor, Coletor, Cooperativa, SolicitacaoColeta, ItemColeta
+from django.contrib.gis.geos import Point
+import requests
+
+def geocode_address(rua, numero, bairro, cidade, estado, cep):
+    endereco = f"{rua} {numero}, {bairro}, {cidade}, {estado}, {cep}, Brasil"
+
+    url = "https://nominatim.openstreetmap.org/search"
+    params = {"q": endereco, "format": "json", "limit": 1}
+
+    r = requests.get(url, params=params, headers={"User-Agent": "ReciclaAi"})
+
+    if r.status_code != 200 or len(r.json()) == 0:
+        return None
+
+    dados = r.json()[0]
+
+    lat = float(dados["lat"])
+    lon = float(dados["lon"])
+
+    return Point(lon, lat, srid=4326)
 
 # --- Serializers de Registro (Atualizados para novos campos) ---
+def create(self, validated_data):
+        try:
+            # Extrai endereço
+            rua = validated_data.get("rua")
+            numero = validated_data.get("numero")
+            bairro = validated_data.get("bairro")
+            cidade = validated_data.get("cidade")
+            estado = validated_data.get("estado")
+            cep = validated_data.get("cep")
 
+            # Tenta geocodificar
+            ponto = geocode_address(rua, numero, bairro, cidade, estado, cep)
+            if ponto:
+                validated_data["geom"] = ponto
+
+            return super().create(validated_data)
+
+        except Exception as e:
+            raise serializers.ValidationError({'detail': str(e)})
 
 class ProdutorRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -24,10 +62,24 @@ class ProdutorRegistrationSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        try:
-            return super().create(validated_data)
-        except Exception as e:
-            raise serializers.ValidationError({'detail': str(e)})
+            try:
+                # Extrai endereço
+                rua = validated_data.get("rua")
+                numero = validated_data.get("numero")
+                bairro = validated_data.get("bairro")
+                cidade = validated_data.get("cidade")
+                estado = validated_data.get("estado")
+                cep = validated_data.get("cep")
+
+                # Tenta geocodificar
+                ponto = geocode_address(rua, numero, bairro, cidade, estado, cep)
+                if ponto:
+                    validated_data["geom"] = ponto
+
+                return super().create(validated_data)
+
+            except Exception as e:
+                raise serializers.ValidationError({'detail': str(e)})
 
 
 class ColetorRegistrationSerializer(serializers.ModelSerializer):
@@ -129,21 +181,31 @@ class SolicitacaoColetaListSerializer(serializers.ModelSerializer):
 
     # Nested com dados resumidos do produtor (inclui endereço)
     class ProdutorResumoSerializer(serializers.ModelSerializer):
+        latitude = serializers.SerializerMethodField()
+        longitude = serializers.SerializerMethodField()
+
         class Meta:
             model = Produtor
-            fields = ['id', 'nome', 'email', 'telefone', 'cep',
-                      'rua', 'numero', 'bairro', 'cidade', 'estado']
-            read_only_fields = fields
+            fields = [
+                'id', 'nome', 'email', 'telefone', 'cep',
+                'rua', 'numero', 'bairro', 'cidade', 'estado',
+                'latitude', 'longitude'   # <-- CORRIGIDO
+            ]
+
+        def get_latitude(self, obj):
+            return obj.geom.y if obj.geom else None
+
+        def get_longitude(self, obj):
+            return obj.geom.x if obj.geom else None
 
     produtor = ProdutorResumoSerializer(read_only=True)
 
     class Meta:
         model = SolicitacaoColeta
-
         fields = [
             'id', 'inicio_coleta', 'fim_coleta', 'status',
-            'status_display', 'coletor_nome', 'itens_count', 'observacoes',
-            'produtor'
+            'status_display', 'coletor_nome', 'itens_count',
+            'observacoes', 'produtor'
         ]
         read_only_fields = fields
 
