@@ -1,5 +1,6 @@
 # backend/src/aplicativo_web/serializers.py
 from rest_framework import serializers
+import re
 from .models import Produtor, Coletor, Cooperativa, SolicitacaoColeta, ItemColeta
 from django.contrib.gis.geos import Point
 import requests
@@ -81,6 +82,12 @@ class ProdutorRegistrationSerializer(serializers.ModelSerializer):
             except Exception as e:
                 raise serializers.ValidationError({'detail': str(e)})
 
+    def validate_cep(self, value):
+        """Remove caracteres não numéricos do CEP antes de salvar."""
+        if value is None:
+            return value
+        return re.sub(r"\D", "", str(value))
+
 
 class ColetorRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -104,6 +111,12 @@ class ColetorRegistrationSerializer(serializers.ModelSerializer):
         except Exception as e:
             raise serializers.ValidationError({'detail': str(e)})
 
+    def validate_cep(self, value):
+        """Remove caracteres não numéricos do CEP antes de salvar."""
+        if value is None:
+            return value
+        return re.sub(r"\D", "", str(value))
+
 
 class CooperativaRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -121,6 +134,12 @@ class CooperativaRegistrationSerializer(serializers.ModelSerializer):
             return super().create(validated_data)
         except Exception as e:
             raise serializers.ValidationError({'detail': str(e)})
+
+    def validate_cep(self, value):
+        """Remove caracteres não numéricos do CEP antes de salvar."""
+        if value is None:
+            return value
+        return re.sub(r"\D", "", str(value))
 
 # --- Serializer de Login (Sem alterações, mas ajustado para 'cpf_cnpj') ---
 
@@ -211,3 +230,22 @@ class SolicitacaoColetaListSerializer(serializers.ModelSerializer):
 
     def get_itens_count(self, obj):
         return obj.itens.count()
+
+
+class SolicitacaoColetaDetailSerializer(serializers.ModelSerializer):
+    """Serializer detalhado de uma solicitação, incluindo os itens (itens de coleta)."""
+    coletor_nome = serializers.CharField(
+        source='coletor.nome', read_only=True, allow_null=True)
+    status_display = serializers.CharField(
+        source='get_status_display', read_only=True)
+    produtor = SolicitacaoColetaListSerializer.ProdutorResumoSerializer(
+        read_only=True)
+    itens = ItemColetaSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = SolicitacaoColeta
+        fields = [
+            'id', 'inicio_coleta', 'fim_coleta', 'status', 'status_display',
+            'coletor_nome', 'produtor', 'observacoes', 'itens'
+        ]
+        read_only_fields = fields
