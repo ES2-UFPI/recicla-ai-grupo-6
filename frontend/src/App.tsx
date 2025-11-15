@@ -22,7 +22,7 @@ type User = {
 
 function App() {
   // Começamos sem usuário logado — AuthScreen fará login
-  const [loggedInUser, setLoggedInUser] = useState<User | null>({ name: 'Recicla Teresina', type: 'coletor' });
+  const [loggedInUser, setLoggedInUser] = useState<User | null>({ name: 'Recicla Teresina', type: 'produtor' });
 
   // Função para fazer logout
   const handleLogout = () => {

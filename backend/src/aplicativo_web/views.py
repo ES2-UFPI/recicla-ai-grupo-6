@@ -209,7 +209,7 @@ class MinhasSolicitacoesView(generics.ListAPIView):
 
             user_id = auth_payload.get('user_id')
             produtor_profile = Produtor.objects.get(pk=user_id)
-            return SolicitacaoColeta.objects.filter(produtor=produtor_profile).order_by('-id')
+            return SolicitacaoColeta.objects.filter(produtor=produtor_profile).select_related('coletor').order_by('-id')
         except Produtor.DoesNotExist:
             return SolicitacaoColeta.objects.none()
 

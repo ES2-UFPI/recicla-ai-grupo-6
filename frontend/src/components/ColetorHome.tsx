@@ -6,6 +6,7 @@ import "leaflet/dist/leaflet.css";
 import "./Coletas.css"; // Importar o novo CSS
 import api from "../apiFetch";
 import { FaMapMarkerAlt, FaClock, FaCheck, FaTruck, FaRoute } from "react-icons/fa";
+import apiFetch from "../apiFetch";
 
 // =============================
 // ÍCONES CUSTOMIZADOS
@@ -29,11 +30,30 @@ delete (L.Icon.Default.prototype as any)._getIconUrl;
 // =============================
 // DADOS E TIPOS
 // =============================
-const COOPERATIVA_FIXA = {
-  nome: "Cooperativa Recicla Bem",
-  lat: -5.0885,
-  lng: -42.8016,
-};
+// Trocamos a cooperativa fixa por uma lista (que viria da API)
+const LISTA_COOPERATIVAS_MOCK = [
+  {
+    id: 1,
+    nome: "Cooperativa Recicla Bem (Centro)",
+    endereco: "Av. Frei Serafim, 1234",
+    lat: -5.0885,
+    lng: -42.8016,
+  },
+  {
+    id: 2,
+    nome: "Cooperativa Verde Viver (Zona Leste)",
+    endereco: "Rua das Acácias, 500",
+    lat: -5.0531,
+    lng: -42.7508,
+  },
+  {
+    id: 3,
+    nome: "Cooperativa Recicla Sul (Zona Sul)",
+    endereco: "Av. Barão de Gurguéia, 3000",
+    lat: -5.1129,
+    lng: -42.7981,
+  }
+];
 
 // =============================
 // COMPONENTE DE ROTA
@@ -160,33 +180,35 @@ function Rota({ pontoA, pontoB, onResumo, routeKey }: any) {
 export default function ColetorHome() {
   const [coletas, setColetas] = useState<any[]>([]);
   const [selecionada, setSelecionada] = useState<any>(null);
-  const [etapa, setEtapa] = useState<"INICIO" | "R1" | "R2">("INICIO");
+  const [etapa, setEtapa] = useState<"INICIO" | "R1" | "SELECIONAR_COOPERATIVA" | "R2">("INICIO");
   const [resumo, setResumo] = useState<{ distancia: string; tempo: string } | null>(null);
   const [pontoA, setPontoA] = useState<any>(null);
   const [pontoB, setPontoB] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [cooperativas, setCooperativas] = useState<any[]>([]);
+  const [cooperativaSelecionada, setCooperativaSelecionada] = useState<any>(null);
 
   const handleResumo = useCallback((r: any) => setResumo(r), []);
 
-  // BUSCAR COLETAS DO BANCO DE DADOS
+  // BUSCAR COLETAS E COOPERATIVAS
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
-        const resp = await api.request("/api/coletas/disponiveis/");
-        const dados = await resp.json();
-        console.log("=== DADOS RECEBIDOS DA API ===");
-        console.log("Coletas:", dados);
-        if (dados.length > 0) {
-          console.log("Primeira coleta:", dados[0]);
-          console.log("Estrutura do produtor:", dados[0].produtor);
-          console.log("Itens:", dados[0].itens);
-        }
-        console.log("==============================");
-        setColetas(dados);
+        // Busca coletas
+        const respColetas = await api.request("/api/coletas/disponiveis/");
+        const dadosColetas = await respColetas.json();
+        setColetas(dadosColetas);
+        
+        // Busca cooperativas (aqui estamos usando o MOCK)
+        // Numa app real: const respCoop = await api.request("/api/cooperativas/");
+        // const dadosCoop = await respCoop.json();
+        setCooperativas(LISTA_COOPERATIVAS_MOCK);
+        
       } catch (e) {
-        console.error("Erro ao buscar coletas", e);
+        console.error("Erro ao buscar dados iniciais", e);
         setColetas([]);
+        setCooperativas([]);
       } finally {
         setLoading(false);
       }
@@ -197,64 +219,41 @@ export default function ColetorHome() {
   const aceitarColeta = async (c: any) => {
     console.log("=== ACEITAR COLETA ===");
     console.log("Coleta completa:", c);
-    console.log("ID da coleta:", c.id);
-    console.log("Produtor completo:", c.produtor);
-    
-    if (c.produtor) {
-      console.log("Latitude:", c.produtor.latitude);
-      console.log("Longitude:", c.produtor.longitude);
-    }
-    console.log("=====================");
     
     // Validações
-    if (!c.produtor) {
-      alert("Erro: Dados do produtor não encontrados!");
-      return;
-    }
-    
-    if (!c.produtor.latitude || !c.produtor.longitude) {
+    if (!c.produtor || !c.produtor.latitude || !c.produtor.longitude) {
       alert("Erro: Coordenadas do produtor não encontradas!");
       return;
     }
     
     try {
-      console.log("Tentando atualizar status para ACEITA...");
+      console.log("Tentando atualizar status para SOLICITADA...");
       
-      // Tenta várias possibilidades de rota
-      let response;
-      const endpoints = [
-        `/api/coletas/${c.id}/status/`,
-        `http://localhost:8000/api/coletas/${c.id}/status/`,
-        `/coletas/${c.id}/status/`,
-      ];
-      
-      for (const endpoint of endpoints) {
-        try {
-          console.log("Tentando endpoint:", endpoint);
-          response = await fetch(endpoint, {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ status: "SOLICITADA" }),
-          });
-          
-          if (response.ok) {
-            console.log("Sucesso com endpoint:", endpoint);
-            break;
-          } else {
-            console.log(`Endpoint ${endpoint} falhou: ${response.status}`);
-          }
-        } catch (err) {
-          console.log(`Erro ao tentar ${endpoint}:`, err);
-        }
-      }
+      // Seu código de PATCH para "SOLICITADA" (fetch ou api.request)
+      // Exemplo:
+      /*
+      const response = await fetch(`http://localhost:8000/api/coletas/${c.id}/status/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "SOLICITADA" }),
+      });
 
-     /* if (!response || !response.ok) {
-       alert("Erro ao aceitar coleta. O status NÃO foi alterado.");
-        return; // <<< ESSENCIAL
+      if (!response.ok) {
+        alert("Erro ao aceitar coleta. O status NÃO foi alterado.");
+        return; 
       }
-        */
+      */
+      
+      const response = await apiFetch.request(
+        `/api/coletas/${c.id}/aceitar/`, 
+        "POST" // <- Esta é a string que a função espera
+      );
+
+      if (!response.ok) {
+        const erroData = await response.json();
+        alert(`Erro ao aceitar coleta: ${erroData.detail || response.statusText}`);
+        return; // <<< ESSENCIAL
+      }
 
       console.log("Solicitando localização do GPS...");
       
@@ -269,7 +268,7 @@ export default function ColetorHome() {
           setSelecionada(c);
           setPontoA(origem);
           setPontoB(destino);
-          setEtapa("R1");  // <<< só aqui!!
+          setEtapa("R1");
         },
         (error) => {
           alert("Não foi possível obter sua localização.");
@@ -277,22 +276,17 @@ export default function ColetorHome() {
       );
     } catch (e) {
       console.error("Erro ao aceitar coleta:", e);
-      // Não mostra alert, apenas continua
-      setSelecionada(c);
-      setEtapa("R1");
+      alert("Erro ao aceitar coleta. Tente novamente.");
     }
   };
 
-  // CONFIRMAR COLETA
+  // CONFIRMAR COLETA (Retirada no produtor)
   const confirmarColeta = async () => {
     try {
-      // Usando fetch direto
+      // PATCH para "CONFIRMADA"
       const response = await fetch(`http://localhost:8000/api/coletas/${selecionada.id}/status/`, {
-
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "CONFIRMADA" }),
       });
 
@@ -302,64 +296,80 @@ export default function ColetorHome() {
         throw new Error(`Erro ${response.status}`);
       }
 
-      if (!response.ok) {
-        throw new Error(`Erro ${response.status}`);
-      }
-
-      setEtapa("R2");
-      setResumo(null);
-
+      // 1. Define o Ponto A (origem) como a localização do produtor
       const latP = parseFloat(selecionada.produtor.latitude);
       const lngP = parseFloat(selecionada.produtor.longitude);
       setPontoA(new LatLng(latP, lngP));
-      setPontoB(new LatLng(COOPERATIVA_FIXA.lat, COOPERATIVA_FIXA.lng));
+      
+      // 2. Limpa o Ponto B (destino) e o resumo
+      setPontoB(null); 
+      setResumo(null);
+      
+      // 3. Muda para a nova etapa de seleção
+      setEtapa("SELECIONAR_COOPERATIVA");
+
     } catch (e) {
       console.error("Erro ao confirmar coleta:", e);
       alert("Erro ao confirmar coleta. Tente novamente.");
     }
   };
 
-const cancelarColetaOuEntrega = async () => {
-  try {
-    const response = await fetch(`http://localhost:8000/api/coletas/${selecionada.id}/status/`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "SOLICITADA" }),
-    });
-
-    const txt = await response.text();
-    console.log("DEBUG CANCELAMENTO:", response.status, txt);
-
-    if (!response.ok) {
-      alert("Erro ao cancelar. Tente novamente.");
-      return;
-    }
-
-    // Resetar tudo
-    setEtapa("INICIO");
-    setSelecionada(null);
-    setPontoA(null);
-    setPontoB(null);
+  // Nova função para lidar com a seleção da cooperativa
+  const handleSelecionarCooperativa = (coop: any) => {
+    console.log("Cooperativa selecionada:", coop);
+    
+    // 1. Armazena a cooperativa selecionada (pode ser útil)
+    setCooperativaSelecionada(coop);
+    
+    // 2. Define o Ponto B (destino) como as coordenadas da cooperativa
+    setPontoB(new LatLng(coop.lat, coop.lng));
+    
+    // 3. Reseta o resumo da rota
     setResumo(null);
+    
+    // 4. Agora sim, vai para a Rota 2 (Mapa)
+    setEtapa("R2");
+  };
 
-    // Recarrega lista
-    setLoading(true);
-    const resp = await api.request("/api/coletas/disponiveis/");
-    const dados = await resp.json();
-    setColetas(dados);
-    setLoading(false);
 
-  } catch (err) {
-    console.error("Erro ao cancelar:", err);
-    alert("Não foi possível cancelar a coleta.");
-  }
-};
+  const cancelarColetaOuEntrega = async () => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/coletas/${selecionada.id}/status/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "SOLICITADA" }), // Volta para SOLICITADA
+      });
+
+      if (!response.ok) {
+        alert("Erro ao cancelar. Tente novamente.");
+        return;
+      }
+
+      // Resetar tudo
+      setEtapa("INICIO");
+      setSelecionada(null);
+      setPontoA(null);
+      setPontoB(null);
+      setResumo(null);
+      setCooperativaSelecionada(null); // Limpar cooperativa
+
+      // Recarrega lista
+      setLoading(true);
+      const resp = await api.request("/api/coletas/disponiveis/");
+      const dados = await resp.json();
+      setColetas(dados);
+      setLoading(false);
+
+    } catch (err) {
+      console.error("Erro ao cancelar:", err);
+      alert("Não foi possível cancelar a coleta.");
+    }
+  };
 
 
   // CONCLUIR ENTREGA
   const concluirEntrega = async () => {
     try {
-      // Usando fetch direto
       const response = await fetch(`/api/coletas/${selecionada.id}/status/`, {
         method: "PATCH",
         headers: {
@@ -380,6 +390,7 @@ const cancelarColetaOuEntrega = async () => {
       setPontoA(null);
       setPontoB(null);
       setResumo(null);
+      setCooperativaSelecionada(null); // Limpar cooperativa
       
       // Recarrega a lista de coletas
       setLoading(true);
@@ -405,38 +416,68 @@ const cancelarColetaOuEntrega = async () => {
       );
     }
 
-    if (!coletas || coletas.length === 0) {
-      return (
-        <div className="list-container">
-          <h2>Coletas Disponíveis</h2>
-          <p>Nenhuma solicitação encontrada.</p>
-        </div>
-      );
-    }
-
     return (
       <div className="list-container">
         <h2>Coletas Disponíveis</h2>
-        {coletas.map((c) => (
-          <div className="coleta-card" key={c.id}>
-            <div className="card-content">
-              <h3>{c.produtor?.nome || "Produtor não identificado"}</h3>
-              <p className="address">
-                {c.produtor?.rua || "Rua"}, {c.produtor?.numero || "S/N"} — {c.produtor?.bairro || "Bairro"}
-              </p>
-              <div className="material-info">
-                {c.itens?.length || 0} tipo(s) de material
+        {(!coletas || coletas.length === 0) ? (
+          <p>Nenhuma solicitação encontrada.</p>
+        ) : (
+          coletas.map((c) => (
+            <div className="coleta-card" key={c.id}>
+              <div className="card-content">
+                <h3>{c.produtor?.nome || "Produtor não identificado"}</h3>
+                <p className="address">
+                  {c.produtor?.rua || "Rua"}, {c.produtor?.numero || "S/N"} — {c.produtor?.bairro || "Bairro"}
+                </p>
+                <div className="material-info">
+                  {c.itens?.length || 0} tipo(s) de material
+                </div>
               </div>
-            </div>
 
-            <button className="btn-primary" onClick={() => aceitarColeta(c)}>
-              <FaCheck /> Aceitar Coleta
-            </button>
-          </div>
-        ))}
+              <button className="btn-primary" onClick={() => aceitarColeta(c)}>
+                <FaCheck /> Aceitar Coleta
+              </button>
+            </div>
+          ))
+        )}
       </div>
     );
   }
+
+  // =============================
+  // TELA: SELECIONAR COOPERATIVA
+  // =============================
+  if (etapa === "SELECIONAR_COOPERATIVA") {
+    return (
+      <div className="list-container"> {/* Reaproveitando o estilo da lista */}
+        <h2>Escolha a Cooperativa de Destino</h2>
+        
+        {cooperativas.map((coop) => (
+          <div className="coleta-card" key={coop.id}> {/* Reaproveitando o estilo do card */}
+            <div className="card-content">
+              <h3>{coop.nome}</h3>
+              <p className="address">
+                {coop.endereco}
+              </p>
+            </div>
+
+            <button className="btn-primary" onClick={() => handleSelecionarCooperativa(coop)}>
+              <FaMapMarkerAlt /> Ir para esta
+            </button>
+          </div>
+        ))}
+
+        <button 
+          className="action-button danger-action" 
+          onClick={cancelarColetaOuEntrega}
+          style={{ marginTop: '20px', width: '100%' }} // Adicionando estilo
+        >
+          ❌ Cancelar (Voltar para lista de coletas disponiveis)
+        </button>
+      </div>
+    );
+  }
+
 
   // =============================
   // TELA: ROTAS (MAPA)
@@ -473,7 +514,7 @@ const cancelarColetaOuEntrega = async () => {
         <MapContainer
           center={pontoA}
           zoom={14}
-          key={etapa} // Força remontagem do mapa ao trocar de etapa
+          key={`${etapa}-${pontoB.lat}-${pontoB.lng}`} // Chave mais específica
           style={{
             height: "450px",
             width: "100%",
@@ -486,7 +527,7 @@ const cancelarColetaOuEntrega = async () => {
             pontoA={pontoA} 
             pontoB={pontoB} 
             onResumo={handleResumo} 
-            routeKey={etapa} // Força recriação da rota
+            routeKey={`${etapa}-${pontoB.lat}-${pontoB.lng}`} // Chave mais específica
           />
         </MapContainer>
       )}
