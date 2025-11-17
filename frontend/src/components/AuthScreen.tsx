@@ -87,9 +87,14 @@ const AuthScreen = (props: Props) => {
           const data = await res.json().catch(() => ({}));
           console.log('Resposta login:', res.status, data);
           if (res.status === 200) {
-            const access = data.access;
+            // Aceita vários formatos de token retornados pelo backend
+            const token = data.access || data.token || data.access_token || data.jwt || data.auth_token || null;
             const user_type = data.user_type || 'produtor';
-            api.setToken(access);
+            if (token) {
+              api.setToken(token);
+            } else {
+              console.warn('Resposta de login sem token esperado; resposta:', data);
+            }
             setFeedback('Login realizado! Redirecionando...');
             setErrors(null);
             // tenta extrair o nome retornado pela API; se não houver, usa email como fallback

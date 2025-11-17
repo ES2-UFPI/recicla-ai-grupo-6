@@ -17,8 +17,11 @@ from .serializers import (
     SolicitacaoColetaCreateSerializer, SolicitacaoColetaListSerializer,
     SolicitacaoColetaDetailSerializer
 )
+from .serializers import CooperativaMaterialSerializer
 from .models import Produtor, Coletor, Cooperativa, SolicitacaoColeta
+from .models import CooperativaMaterial
 from .permissions import IsProdutor
+from django.utils import timezone
 
 # --- Views Originais (Servir Frontend e Teste) ---
 
@@ -48,6 +51,7 @@ class ProdutorRegisterView(generics.CreateAPIView):
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+
 class AtualizarStatusColetaView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -59,18 +63,67 @@ class AtualizarStatusColetaView(APIView):
 
         novo_status = request.data.get("status")
 
-        if novo_status not in ["ACEITA", "CONFIRMADA", "CANCELADA", "SOLICITADA"]:
+        # O banco atual tem uma constraint que não permite valores fora
+        # de: SOLICITADA, ACEITA, CANCELADA, CONFIRMADA.
+        # Para evitar criar migrations (alterar constraint), mapeamos
+        # 'CONCLUIDA' -> 'CONFIRMADA' no servidor. Se desejar permitir
+        # 'CONCLUIDA' de verdade, gere a migration que atualiza o modelo
+        # e aplique a alteração no banco.
+
+        if novo_status is None:
+            return Response({"detail": "Campo 'status' é obrigatório."}, status=400)
+
+        if novo_status not in ["ACEITA", "CONFIRMADA", "CANCELADA", "SOLICITADA", "CONCLUIDA"]:
             return Response({"detail": "Status inválido"}, status=400)
 
-        coleta.status = novo_status
+        mapped = False
+        final_status = novo_status
+        if novo_status == 'CONCLUIDA':
+            # Mapeamento temporário para evitar violação da constraint
+            final_status = 'CONFIRMADA'
+            mapped = True
+
+        # Tenta extrair o coletor autenticado (se houver) a partir do token JWT
+        auth_payload = getattr(request, 'auth_payload', None)
+        if not auth_payload:
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                raw_token = auth_header.split(' ')[1]
+                from rest_framework_simplejwt.authentication import JWTAuthentication
+                jwt_auth = JWTAuthentication()
+                try:
+                    validated = jwt_auth.get_validated_token(raw_token)
+                    auth_payload = getattr(validated, 'payload', None)
+                    if auth_payload:
+                        request.auth_payload = auth_payload
+                except Exception:
+                    auth_payload = None
+
+        # Se o usuário autenticado for um coletor e a solicitação ainda não tiver coletor,
+        # associa o coletor autenticado à solicitação.
+        associado = False
+        if auth_payload and auth_payload.get('user_type') == 'coletor' and auth_payload.get('user_id'):
+            try:
+                coletor_id = auth_payload.get('user_id')
+                coletor_profile = Coletor.objects.filter(pk=coletor_id).first()
+                if coletor_profile and coleta.coletor is None:
+                    coleta.coletor = coletor_profile
+                    associado = True
+            except Exception:
+                # não falha a operação só por não conseguir associar o coletor
+                associado = False
+
+        coleta.status = final_status
         coleta.save()
 
-        return Response({
-            "id": coleta.id,
-            "status": coleta.status
-        })
+        resp = {"id": coleta.id, "status": coleta.status}
+        if mapped:
+            resp["note"] = "Status 'CONCLUIDA' mapeado para 'CONFIRMADA' (constraint do DB)."
+        if associado:
+            resp["coletor_associado"] = coleta.coletor_id
 
-    
+        return Response(resp)
+
 
 class ColetorRegisterView(generics.CreateAPIView):
     serializer_class = ColetorRegistrationSerializer
@@ -183,7 +236,9 @@ class SolicitarColetaView(generics.CreateAPIView):
                 raise AttributeError
             user_id = auth_payload.get('user_id')
             produtor_profile = Produtor.objects.get(pk=user_id)
-            serializer.save(produtor=produtor_profile)
+            # grava o timestamp exato da solicitação no servidor
+            serializer.save(produtor=produtor_profile,
+                            solicitacao=timezone.now())
         except Produtor.DoesNotExist:
             raise serializers.ValidationError(
                 {"detail": "Perfil de Produtor não encontrado."})
@@ -232,11 +287,50 @@ class DisponiveisSolicitacoesView(generics.ListAPIView):
             return SolicitacaoColeta.objects.none()
 
 
-class SolicitacaoColetaDetailView(generics.RetrieveAPIView):
-    """Retorna detalhes de uma solicitação de coleta, incluindo os itens."""
+class SolicitacaoColetaDetailView(generics.RetrieveDestroyAPIView):
+    """Retorna detalhes de uma solicitação de coleta e permite que o produtor que a criou a delete.
+    A exclusão só é permitida quando o status estiver como 'SOLICITADA'.
+    """
     queryset = SolicitacaoColeta.objects.all()
     serializer_class = SolicitacaoColetaDetailSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsProdutor]
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            # tenta extrair payload de autenticação (pode estar definido por middleware)
+            auth_payload = getattr(request, 'auth_payload', None)
+            if not auth_payload:
+                auth_header = request.headers.get('Authorization')
+                if auth_header and auth_header.startswith('Bearer '):
+                    raw_token = auth_header.split(' ')[1]
+                    from rest_framework_simplejwt.authentication import JWTAuthentication
+                    jwt_auth = JWTAuthentication()
+                    try:
+                        validated = jwt_auth.get_validated_token(raw_token)
+                        auth_payload = getattr(validated, 'payload', None)
+                        if auth_payload:
+                            request.auth_payload = auth_payload
+                    except Exception:
+                        auth_payload = None
+
+            if not auth_payload or 'user_id' not in auth_payload:
+                return Response({'detail': 'Autenticação necessária.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+            user_id = auth_payload.get('user_id')
+            coleta = self.get_object()
+
+            # só o produtor dono pode deletar
+            if coleta.produtor_id != user_id:
+                return Response({'detail': 'Somente o produtor dono da solicitação pode deletá-la.'}, status=status.HTTP_403_FORBIDDEN)
+
+            # só permite exclusão se ainda estiver SOLICITADA
+            if coleta.status != 'SOLICITADA':
+                return Response({'detail': 'Só coletas com status SOLICITADA podem ser canceladas/excluídas.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            coleta.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response({'detail': f'Erro inesperado: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class MinhasSolicitacoesColetorView(generics.ListAPIView):
@@ -307,6 +401,7 @@ class AcceptSolicitacaoView(APIView):
             if not auth_payload or 'user_id' not in auth_payload or auth_payload.get('user_type') != 'coletor':
                 return Response({'detail': 'Autenticação de coletor necessária.'}, status=status.HTTP_401_UNAUTHORIZED)
 
+            # A partir daqui, temos um coletor autenticado — realiza a associação da solicitação
             coletor_id = auth_payload.get('user_id')
             try:
                 coletor_profile = Coletor.objects.get(pk=coletor_id)
@@ -327,6 +422,163 @@ class AcceptSolicitacaoView(APIView):
             solicit.save()
 
             serializer = SolicitacaoColetaDetailSerializer(solicit)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'detail': f'Erro inesperado: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CooperativaInteressesView(APIView):
+    """Recebe a lista de interesses (tipo_residuo, preco) e atualiza a tabela
+    `cooperativa_material` para a cooperativa autenticada.
+    Payload esperado: {"interesses": [{"categoria": "Plástico", "preco": "R$ 2,50/kg"}, ...]}
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        """Retorna a lista de interesses (tipo_residuo, preco_oferecido) da cooperativa autenticada."""
+        # tenta extrair payload de autenticação (como em outras views)
+        auth_payload = getattr(request, 'auth_payload', None)
+        if not auth_payload:
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                raw_token = auth_header.split(' ')[1]
+                from rest_framework_simplejwt.authentication import JWTAuthentication
+                jwt_auth = JWTAuthentication()
+                try:
+                    validated = jwt_auth.get_validated_token(raw_token)
+                    auth_payload = getattr(validated, 'payload', None)
+                    if auth_payload:
+                        request.auth_payload = auth_payload
+                except Exception:
+                    auth_payload = None
+
+        if not auth_payload or auth_payload.get('user_type') != 'cooperativa' or 'user_id' not in auth_payload:
+            return Response({'detail': 'Autenticação de cooperativa necessária.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        coop_id = auth_payload.get('user_id')
+        qs = CooperativaMaterial.objects.filter(cooperativa_id=coop_id)
+        serializer = CooperativaMaterialSerializer(qs, many=True)
+        # Retornamos em um campo 'interesses' para compatibilidade com frontend
+        return Response({'interesses': serializer.data}, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        # tenta extrair payload de autenticação (como em outras views)
+        auth_payload = getattr(request, 'auth_payload', None)
+        if not auth_payload:
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                raw_token = auth_header.split(' ')[1]
+                from rest_framework_simplejwt.authentication import JWTAuthentication
+                jwt_auth = JWTAuthentication()
+                try:
+                    validated = jwt_auth.get_validated_token(raw_token)
+                    auth_payload = getattr(validated, 'payload', None)
+                    if auth_payload:
+                        request.auth_payload = auth_payload
+                except Exception:
+                    auth_payload = None
+
+        if not auth_payload or auth_payload.get('user_type') != 'cooperativa' or 'user_id' not in auth_payload:
+            return Response({'detail': 'Autenticação de cooperativa necessária.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        coop_id = auth_payload.get('user_id')
+
+        interesses = request.data.get('interesses')
+        if interesses is None or not isinstance(interesses, list):
+            return Response({'detail': "Campo 'interesses' inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Helper para converter preço em Decimal
+        import re
+        from decimal import Decimal
+
+        def parse_price(p):
+            if p is None:
+                return None
+            if isinstance(p, (int, float, Decimal)):
+                return Decimal(str(p))
+            s = str(p)
+            # remove R$, /kg, spaces e letras
+            s = s.replace('R$', '').replace('r$', '')
+            s = re.sub(r"[^0-9,\.\-]", '', s)
+            s = s.replace(',', '.')
+            try:
+                return Decimal(s)
+            except Exception:
+                return None
+
+        processed_types = []
+        for item in interesses:
+            tipo = item.get('categoria') or item.get('tipo_residuo')
+            preco_raw = item.get('preco') or item.get('preco_oferecido')
+            if not tipo:
+                continue
+            preco = parse_price(preco_raw)
+            if preco is None:
+                continue
+            # create or update
+            CooperativaMaterial.objects.update_or_create(
+                cooperativa_id=coop_id,
+                tipo_residuo=tipo,
+                defaults={'preco_oferecido': preco}
+            )
+            processed_types.append(tipo)
+
+        # Remove materiais existentes que não estão na lista enviada
+        CooperativaMaterial.objects.filter(cooperativa_id=coop_id).exclude(
+            tipo_residuo__in=processed_types).delete()
+
+        return Response({'detail': 'Interesses atualizados com sucesso.'}, status=status.HTTP_200_OK)
+
+
+class AssociarCooperativaView(APIView):
+    """Permite que um Coletor autenticado associe uma cooperativa a uma solicitação (campo cooperativa_id).
+    Endpoint: PATCH /api/coletas/<pk>/associar_cooperativa/
+    Payload esperado: { "cooperativa_id": <id> }
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def patch(self, request, pk):
+        try:
+            # tenta extrair payload de autenticação (pode já estar em request.auth_payload)
+            auth_payload = getattr(request, 'auth_payload', None)
+            if not auth_payload:
+                auth_header = request.headers.get('Authorization')
+                if auth_header and auth_header.startswith('Bearer '):
+                    raw_token = auth_header.split(' ')[1]
+                    from rest_framework_simplejwt.authentication import JWTAuthentication
+                    jwt_auth = JWTAuthentication()
+                    try:
+                        validated = jwt_auth.get_validated_token(raw_token)
+                        auth_payload = getattr(validated, 'payload', None)
+                        if auth_payload:
+                            request.auth_payload = auth_payload
+                    except Exception:
+                        auth_payload = None
+
+            if not auth_payload or auth_payload.get('user_type') != 'coletor' or 'user_id' not in auth_payload:
+                return Response({'detail': 'Autenticação de coletor necessária.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+            try:
+                coleta = SolicitacaoColeta.objects.get(pk=pk)
+            except SolicitacaoColeta.DoesNotExist:
+                return Response({'detail': 'Solicitação não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+            coop_id = request.data.get(
+                'cooperativa_id') or request.data.get('cooperativa')
+            if coop_id is None:
+                return Response({'detail': "Campo 'cooperativa_id' é obrigatório."}, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                coop = Cooperativa.objects.get(pk=coop_id)
+            except Cooperativa.DoesNotExist:
+                return Response({'detail': 'Cooperativa não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+            # Associa e salva
+            coleta.cooperativa = coop
+            coleta.save()
+
+            serializer = SolicitacaoColetaDetailSerializer(coleta)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         except Exception as e:
