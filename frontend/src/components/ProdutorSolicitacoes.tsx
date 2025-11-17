@@ -5,6 +5,7 @@ import apiFetch from '../apiFetch';
 type Solicitacao = {
   id: string;
   data?: string;
+  solicitacao?: string;
   inicio_coleta?: string;
   fim_coleta?: string;
   status?: string;
@@ -52,8 +53,18 @@ const ProdutorSolicitacoes = () => {
   };
 
   async function handleCancelar(_id: string) {
-    // Cancelamento não implementado no backend atualmente.
-    alert('Cancelamento não disponível: endpoint não implementado no backend.');
+    if (!window.confirm('Confirma cancelar e remover esta solicitação?')) return;
+    try {
+      const resp = await apiFetch.request(`/api/coletas/${_id}/`, 'DELETE');
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error(`Erro ao cancelar: ${resp.status} ${errText}`);
+      }
+      // remover da lista local para feedback instantâneo
+      setSolicitacoes(prev => prev.filter(s => s.id !== _id));
+    } catch (err: any) {
+      alert(err.message || 'Erro desconhecido ao cancelar solicitação');
+    }
   }
 
   return (
@@ -86,7 +97,7 @@ const ProdutorSolicitacoes = () => {
               solicitacoes.map(sol => (
                 <tr key={sol.id}>
                   <td>{sol.id}</td>
-                  <td>{formatDateTimeOffset(sol.inicio_coleta || sol.fim_coleta || Date.now(), 6)}</td>
+                  <td>{formatDateTimeOffset(sol.solicitacao || sol.inicio_coleta || sol.fim_coleta || Date.now(), 3)}</td>
                   <td>
                     <span className={`status-badge status-${(sol.status || '').toString().toLowerCase().replace(' ', '-')}`}>
                       {sol.status_display || sol.status}

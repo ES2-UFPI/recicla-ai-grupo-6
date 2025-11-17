@@ -22,7 +22,7 @@ type User = {
 
 function App() {
   // Começamos sem usuário logado — AuthScreen fará login
-  const [loggedInUser, setLoggedInUser] = useState<User | null>({ name: 'Recicla Teresina', type: 'produtor' });
+  const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
 
   // Função para fazer logout
   const handleLogout = () => {
@@ -53,27 +53,27 @@ function App() {
             </>
           )}
 
-         {loggedInUser.type === 'coletor' && (
+          {loggedInUser.type === 'coletor' && (
             <>
-                {/* Rota principal do coletor (Coletas Disponíveis) */}
-                <Route path="/" element={<ColetorHome />} />
+              {/* Rota principal do coletor (Coletas Disponíveis) */}
+              <Route path="/" element={<ColetorHome />} />
 
-                {/* Rota para o Inventário */}
-                <Route path="/inventario" element={<ColetorInventario />} /> 
+              {/* Rota para o Inventário */}
+              <Route path="/inventario" element={<ColetorInventario />} />
 
-                {/* Rota para o Histórico de Entregas (Minhas Coletas) */}
-                <Route path="/historico" element={<ColetorHistorico />} /> 
+              {/* Rota para o Histórico de Entregas (Minhas Coletas) */}
+              <Route path="/historico" element={<ColetorHistorico />} />
             </>
-        )}
+          )}
 
           {loggedInUser.type === 'cooperativa' && (
-                    <>
-                      <Route path="/" element={<CooperativaHome />} />
-                      <Route path="/confirmar-entregas" element={<GerenciarEntregas />} />
-                      <Route path="/meus-interesses" element={<GerenciarInteresses />} />
-                      {/* <Route path="/gerenciar-coletores" element={<GerenciarColetores />} /> */}
-                    </>
-                  )}
+            <>
+              <Route path="/" element={<CooperativaHome />} />
+              <Route path="/confirmar-entregas" element={<GerenciarEntregas />} />
+              <Route path="/meus-interesses" element={<GerenciarInteresses />} />
+              {/* <Route path="/gerenciar-coletores" element={<GerenciarColetores />} /> */}
+            </>
+          )}
 
           {/* Uma rota para caso nenhuma outra combine dentro do dashboard */}
           <Route path="*" element={<div>Página não encontrada.</div>} />
