@@ -84,7 +84,7 @@ class SolicitacaoColeta(models.Model):
     STATUS_CHOICES = [
         ('SOLICITADA', 'Solicitada'), ('ACEITA',
                                        'Aceita'), ('CANCELADA', 'Cancelada'),
-        ('CONFIRMADA', 'Confirmada'),
+        ('CONFIRMADA', 'Confirmada'), ('AGUARDANDO', 'aguardando'),('CONCLUIDA','concluida'),
     ]
     produtor = models.ForeignKey(
         Produtor, on_delete=models.CASCADE, related_name="solicitacoes", db_column='produtor_id')
@@ -97,7 +97,7 @@ class SolicitacaoColeta(models.Model):
     solicitacao = models.DateTimeField(default=timezone.now)
     fim_coleta = models.DateTimeField(default=timezone.now)
     status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default='SOLICITADA')
+        max_length=55, choices=STATUS_CHOICES, default='SOLICITADA')
     # CAMPO ADICIONADO DE VOLTA:
     observacoes = models.CharField(max_length=200, blank=True, null=True)
 

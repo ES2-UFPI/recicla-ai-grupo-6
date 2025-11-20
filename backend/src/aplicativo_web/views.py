@@ -73,7 +73,7 @@ class AtualizarStatusColetaView(APIView):
         if novo_status is None:
             return Response({"detail": "Campo 'status' é obrigatório."}, status=400)
 
-        if novo_status not in ["ACEITA", "CONFIRMADA", "CANCELADA", "SOLICITADA", "CONCLUIDA"]:
+        if novo_status not in ["ACEITA", "CONFIRMADA", "CANCELADA", "SOLICITADA", "AGUARDANDO", "CONCLUIDA", ]:
             return Response({"detail": "Status inválido"}, status=400)
 
         mapped = False
@@ -293,7 +293,7 @@ class SolicitacaoColetaDetailView(generics.RetrieveDestroyAPIView):
     """
     queryset = SolicitacaoColeta.objects.all()
     serializer_class = SolicitacaoColetaDetailSerializer
-    permission_classes = [IsProdutor]
+    permission_classes = [permissions.AllowAny]
 
     def destroy(self, request, *args, **kwargs):
         try:
