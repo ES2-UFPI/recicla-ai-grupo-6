@@ -2,8 +2,10 @@
 from rest_framework import serializers
 import re
 from .models import Produtor, Coletor, Cooperativa, SolicitacaoColeta, ItemColeta
+from .models import CooperativaMaterial
 from django.contrib.gis.geos import Point
 import requests
+
 
 def geocode_address(rua, numero, bairro, cidade, estado, cep):
     endereco = f"{rua} {numero}, {bairro}, {cidade}, {estado}, {cep}, Brasil"
@@ -24,25 +26,28 @@ def geocode_address(rua, numero, bairro, cidade, estado, cep):
     return Point(lon, lat, srid=4326)
 
 # --- Serializers de Registro (Atualizados para novos campos) ---
+
+
 def create(self, validated_data):
-        try:
-            # Extrai endereço
-            rua = validated_data.get("rua")
-            numero = validated_data.get("numero")
-            bairro = validated_data.get("bairro")
-            cidade = validated_data.get("cidade")
-            estado = validated_data.get("estado")
-            cep = validated_data.get("cep")
+    try:
+        # Extrai endereço
+        rua = validated_data.get("rua")
+        numero = validated_data.get("numero")
+        bairro = validated_data.get("bairro")
+        cidade = validated_data.get("cidade")
+        estado = validated_data.get("estado")
+        cep = validated_data.get("cep")
 
-            # Tenta geocodificar
-            ponto = geocode_address(rua, numero, bairro, cidade, estado, cep)
-            if ponto:
-                validated_data["geom"] = ponto
+        # Tenta geocodificar
+        ponto = geocode_address(rua, numero, bairro, cidade, estado, cep)
+        if ponto:
+            validated_data["geom"] = ponto
 
-            return super().create(validated_data)
+        return super().create(validated_data)
 
-        except Exception as e:
-            raise serializers.ValidationError({'detail': str(e)})
+    except Exception as e:
+        raise serializers.ValidationError({'detail': str(e)})
+
 
 class ProdutorRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -63,24 +68,24 @@ class ProdutorRegistrationSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-            try:
-                # Extrai endereço
-                rua = validated_data.get("rua")
-                numero = validated_data.get("numero")
-                bairro = validated_data.get("bairro")
-                cidade = validated_data.get("cidade")
-                estado = validated_data.get("estado")
-                cep = validated_data.get("cep")
+        try:
+            # Extrai endereço
+            rua = validated_data.get("rua")
+            numero = validated_data.get("numero")
+            bairro = validated_data.get("bairro")
+            cidade = validated_data.get("cidade")
+            estado = validated_data.get("estado")
+            cep = validated_data.get("cep")
 
-                # Tenta geocodificar
-                ponto = geocode_address(rua, numero, bairro, cidade, estado, cep)
-                if ponto:
-                    validated_data["geom"] = ponto
+            # Tenta geocodificar
+            ponto = geocode_address(rua, numero, bairro, cidade, estado, cep)
+            if ponto:
+                validated_data["geom"] = ponto
 
-                return super().create(validated_data)
+            return super().create(validated_data)
 
-            except Exception as e:
-                raise serializers.ValidationError({'detail': str(e)})
+        except Exception as e:
+            raise serializers.ValidationError({'detail': str(e)})
 
     def validate_cep(self, value):
         """Remove caracteres não numéricos do CEP antes de salvar."""
@@ -195,6 +200,7 @@ class SolicitacaoColetaListSerializer(serializers.ModelSerializer):
     coletor_nome = serializers.CharField(
         source='coletor.nome', read_only=True, allow_null=True)
     itens_count = serializers.SerializerMethodField()
+    tipos = serializers.SerializerMethodField()
     status_display = serializers.CharField(
         source='get_status_display', read_only=True)
 
@@ -222,14 +228,22 @@ class SolicitacaoColetaListSerializer(serializers.ModelSerializer):
     class Meta:
         model = SolicitacaoColeta
         fields = [
+            'solicitacao',
             'id', 'inicio_coleta', 'fim_coleta', 'status',
-            'status_display', 'coletor_nome', 'itens_count',
+            'status_display', 'coletor_nome', 'itens_count', 'tipos',
             'observacoes', 'produtor'
         ]
         read_only_fields = fields
 
     def get_itens_count(self, obj):
         return obj.itens.count()
+
+    def get_tipos(self, obj):
+        try:
+            # Retorna uma lista simples com os tipos de resíduo presentes na solicitação
+            return list(obj.itens.values_list('tipo_residuo', flat=True))
+        except Exception:
+            return []
 
 
 class SolicitacaoColetaDetailSerializer(serializers.ModelSerializer):
@@ -245,7 +259,14 @@ class SolicitacaoColetaDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = SolicitacaoColeta
         fields = [
+            'solicitacao',
             'id', 'inicio_coleta', 'fim_coleta', 'status', 'status_display',
             'coletor_nome', 'produtor', 'observacoes', 'itens'
         ]
         read_only_fields = fields
+
+
+class CooperativaMaterialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CooperativaMaterial
+        fields = ['tipo_residuo', 'preco_oferecido']

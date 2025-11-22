@@ -32,6 +32,7 @@ ALLOWED_HOSTS = []
 GDAL_LIBRARY_PATH = r"C:\Program Files\QGIS 3.40.11\bin\gdal311.dll"
 GEOS_LIBRARY_PATH = r"C:\Program Files\QGIS 3.40.11\bin\geos_c.dll"
 
+
 # Application definition
 
 INSTALLED_APPS = [

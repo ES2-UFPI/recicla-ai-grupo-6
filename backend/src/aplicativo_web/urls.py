@@ -28,6 +28,8 @@ urlpatterns = [
     path('coletas/solicitar/', SolicitarColetaView.as_view(),
          name='solicitar-coleta'),
     path('cooperativas/', CooperativaListView.as_view(), name='cooperativas-list'),
+    path('cooperativa/interesses/', views.CooperativaInteressesView.as_view(),
+         name='cooperativa-interesses'),
     path('coletas/minhas/', MinhasSolicitacoesView.as_view(),
          name='minhas-solicitacoes'),
     path('coletas/minhas_coletor/', views.MinhasSolicitacoesColetorView.as_view(),
@@ -35,11 +37,13 @@ urlpatterns = [
     path('coletas/disponiveis/', DisponiveisSolicitacoesView.as_view(),
          name='coletas-disponiveis'),
     path("coletas/<int:pk>/status/", views.AtualizarStatusColetaView.as_view(),
-     name="atualizar-status-coleta"),
-    
+         name="atualizar-status-coleta"),
+
     path('coletas/<int:pk>/', views.SolicitacaoColetaDetailView.as_view(),
          name='coleta-detail'),
     path('coletas/<int:pk>/aceitar/',
          views.AcceptSolicitacaoView.as_view(), name='coleta-aceitar'),
+    path('coletas/<int:pk>/associar_cooperativa/',
+         views.AssociarCooperativaView.as_view(), name='coleta-associar-cooperativa'),
     # path('list_cooperativas/', views.escolha_cooperativa_view, name='list-cooperativas'),
 ]
