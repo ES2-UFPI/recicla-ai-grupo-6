@@ -170,53 +170,97 @@ export default function ColetorHome() {
   const [loading, setLoading] = useState(true);
   const [cooperativas, setCooperativas] = useState<any[]>([]);
   const [cooperativaSelecionada, setCooperativaSelecionada] = useState<any>(null);
+  // refs para polling de novas coletas/cooperativas e controle de notificações
+  const prevColetasRef = useRef<any[]>([]);
+  const notifiedIdsRef = useRef<Set<any>>(new Set());
+  const prevCooperativasRef = useRef<any[]>([]);
+  const notifiedCoopsRef = useRef<Set<any>>(new Set());
 
   const handleResumo = useCallback((r: any) => setResumo(r), []);
 
+  // Função utilitária para extrair lat/lng de diferentes formatos de 'geom'
+  const extractLatLng = (geom: any) => {
+    if (!geom) return { lat: null, lng: null };
+    if (geom.type === 'Point' && Array.isArray(geom.coordinates)) {
+      return { lat: geom.coordinates[1], lng: geom.coordinates[0] };
+    }
+    if (typeof geom === 'string') {
+      const m = geom.match(/POINT\(([-0-9.]+)\s+([-0-9.]+)\)/);
+      if (m) return { lat: parseFloat(m[2]), lng: parseFloat(m[1]) };
+    }
+    return { lat: geom.latitude || geom.lat || null, lng: geom.longitude || geom.lng || null };
+  };
+
+  // Normaliza e aplica a lista de cooperativas em diferentes formatos (array direto ou objeto paginado)
+  const transformAndSetCooperativas = (dadosCoop: any) => {
+    try {
+      // Suporta formatos: array direto, { results: [...] }, { data: [...] }
+      const rawList = Array.isArray(dadosCoop)
+        ? dadosCoop
+        : (dadosCoop && (dadosCoop.results || dadosCoop.data) ? (dadosCoop.results || dadosCoop.data) : null);
+
+      const cooperativasTransformadas = Array.isArray(rawList)
+        ? rawList.map((coop: any) => {
+          const { lat, lng } = extractLatLng(coop.geom);
+          return {
+            id: coop.id,
+            nome: coop.nome_empresa || coop.nome || coop.email || `Cooperativa ${coop.id}`,
+            endereco: coop.rua ? `${coop.rua}${coop.numero ? ', ' + coop.numero : ''} — ${coop.bairro || ''}` : coop.endereco || '',
+            lat,
+            lng,
+            ...coop,
+          };
+        })
+        : LISTA_COOPERATIVAS_MOCK;
+
+      setCooperativas(cooperativasTransformadas);
+    } catch (e) {
+      console.warn('Erro ao transformar cooperativas', e);
+      setCooperativas(LISTA_COOPERATIVAS_MOCK);
+    }
+  };
+
   // BUSCAR COLETAS E COOPERATIVAS (Usando a lógica robusta do código antigo)
   useEffect(() => {
+
     (async () => {
       try {
         setLoading(true);
-        // Busca coletas
+        // Se houver cache gerado por ColetorDashboard, use-o imediatamente enquanto busca a versão atual
+        try {
+          const cached = localStorage.getItem('cooperativas_cache');
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              transformAndSetCooperativas(parsed);
+            } catch (e) { /* noop */ }
+          }
+        } catch (e) { /* noop */ }
+        // Busca coletas (normaliza array ou objeto paginado)
         const respColetas = await apiFetch.request("/api/coletas/disponiveis/");
         const dadosColetas = await respColetas.json();
-        setColetas(dadosColetas);
+        const rawColetas = Array.isArray(dadosColetas)
+          ? dadosColetas
+          : (dadosColetas && (dadosColetas.results || dadosColetas.data)
+            ? (dadosColetas.results || dadosColetas.data)
+            : []);
+        setColetas(rawColetas);
+        // inicializa prevColetas e evita notificar os itens já existentes
+        prevColetasRef.current = rawColetas;
+        if (Array.isArray(rawColetas)) rawColetas.forEach((c: any) => notifiedIdsRef.current.add(c.id));
 
         // Busca cooperativas
         try {
           const respCoop = await apiFetch.request("/api/cooperativas/");
           if (respCoop && respCoop.ok) {
             const dadosCoop = await respCoop.json();
-
-            // Lógica antiga de extração de lat/lng (importante!)
-            const extractLatLng = (geom: any) => {
-              if (!geom) return { lat: null, lng: null };
-              if (geom.type === 'Point' && Array.isArray(geom.coordinates)) {
-                return { lat: geom.coordinates[1], lng: geom.coordinates[0] };
-              }
-              if (typeof geom === 'string') {
-                const m = geom.match(/POINT\(([-0-9.]+)\s+([-0-9.]+)\)/);
-                if (m) return { lat: parseFloat(m[2]), lng: parseFloat(m[1]) };
-              }
-              return { lat: geom.latitude || geom.lat || null, lng: geom.longitude || geom.lng || null };
-            };
-
-            const cooperativasTransformadas = Array.isArray(dadosCoop)
-              ? dadosCoop.map((coop: any) => {
-                const { lat, lng } = extractLatLng(coop.geom);
-                return {
-                  id: coop.id,
-                  nome: coop.nome_empresa || coop.nome || coop.email || `Cooperativa ${coop.id}`,
-                  endereco: coop.rua ? `${coop.rua}${coop.numero ? ', ' + coop.numero : ''} — ${coop.bairro || ''}` : coop.endereco || '',
-                  lat,
-                  lng,
-                  ...coop,
-                };
-              })
-              : LISTA_COOPERATIVAS_MOCK;
-
-            setCooperativas(cooperativasTransformadas);
+            transformAndSetCooperativas(dadosCoop);
+            // inicializa prevCooperativas e evita notificar as existentes
+            try {
+              const raw = Array.isArray(dadosCoop) ? dadosCoop : (dadosCoop && (dadosCoop.results || dadosCoop.data) ? (dadosCoop.results || dadosCoop.data) : []);
+              prevCooperativasRef.current = Array.isArray(raw) ? raw : [];
+              if (Array.isArray(raw)) raw.forEach((cc: any) => notifiedCoopsRef.current.add(cc.id));
+            } catch (e) { /* noop */ }
           } else {
             setCooperativas(LISTA_COOPERATIVAS_MOCK);
           }
@@ -233,6 +277,28 @@ export default function ColetorHome() {
         setLoading(false);
       }
     })();
+  }, []);
+
+  // Escuta evento global disparado por ColetorDashboard quando novas cooperativas chegam
+  useEffect(() => {
+    const handler = (ev: any) => {
+      try {
+        let dados = ev?.detail;
+        // suporta objeto paginado
+        if (dados && !Array.isArray(dados) && (dados.results || dados.data)) {
+          dados = dados.results || dados.data;
+        }
+        if (dados) {
+          // transforma e seta (reaproveita a função definida acima)
+          transformAndSetCooperativas(dados);
+        }
+      } catch (e) {
+        console.warn('Erro ao processar evento cooperativas:updated', e);
+      }
+    };
+
+    window.addEventListener('cooperativas:updated', handler as EventListener);
+    return () => window.removeEventListener('cooperativas:updated', handler as EventListener);
   }, []);
 
   // POLLING: Verifica status a cada 3s se estiver aguardando
@@ -262,6 +328,117 @@ export default function ColetorHome() {
     };
   }, [etapa, selecionada]);
 
+
+
+  // Polling periódico para atualizar lista de coletas e notificar coletores
+  useEffect(() => {
+    let intervalId: any = null;
+
+    const showBrowserNotification = (title: string, body: string) => {
+      try {
+        const message = `${title}: ${body}`;
+        console.debug('[ColetorHome] alert fallback', message);
+        if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+          alert(message);
+        }
+      } catch (err) {
+        console.warn('Erro ao exibir alert fallback:', err);
+      }
+    };
+
+    const poll = async () => {
+      try {
+        // --- Coletas ---
+        console.debug('[ColetorHome] polling coletas/cooperativas', { prevColetas: prevColetasRef.current.length, prevCooperativas: prevCooperativasRef.current.length, permission: typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'n/a' });
+        const resp = await apiFetch.request('/api/coletas/disponiveis/');
+        if (resp && resp.ok) {
+          const dados = await resp.json();
+          const raw = Array.isArray(dados)
+            ? dados
+            : (dados && (dados.results || dados.data) ? (dados.results || dados.data) : []);
+
+          const prevIds = new Set(prevColetasRef.current.map((c: any) => c.id));
+          const newItems = Array.isArray(raw) ? raw.filter((c: any) => !prevIds.has(c.id)) : [];
+          console.debug('[ColetorHome] coletas check', { prevCount: prevIds.size, rawCount: Array.isArray(raw) ? raw.length : 0, newCount: newItems.length, newIds: newItems.map((i: any) => i.id) });
+
+          if (newItems.length > 0) {
+            setColetas(raw);
+            newItems.forEach((item: any) => {
+              const id = item.id;
+              if (!notifiedIdsRef.current.has(id)) {
+                console.debug('[ColetorHome] notifying coleta', id);
+                notifiedIdsRef.current.add(id);
+                const title = 'Nova Coleta Disponível';
+                const nome = item.produtor?.nome || 'Produtor';
+                const endereco = item.produtor?.rua || item.endereco || '';
+                const message = `${title}: ${nome} — ${endereco}`;
+                showBrowserNotification(title, `${nome} — ${endereco}`);
+              } else {
+                console.debug('[ColetorHome] coleta already notified', id);
+              }
+            });
+          } else {
+            setColetas(raw);
+          }
+          prevColetasRef.current = Array.isArray(raw) ? raw : [];
+        }
+
+        // --- Cooperativas ---
+        try {
+          const respCoops = await apiFetch.request('/api/cooperativas/');
+          if (respCoops && respCoops.ok) {
+            const dadosC = await respCoops.json();
+            // normaliza lista bruta
+            const raw = Array.isArray(dadosC) ? dadosC : (dadosC && (dadosC.results || dadosC.data) ? (dadosC.results || dadosC.data) : []);
+            const prevCoopIds = new Set(prevCooperativasRef.current.map((c: any) => c.id));
+            const newCoops = Array.isArray(raw) ? raw.filter((c: any) => !prevCoopIds.has(c.id)) : [];
+
+            if (newCoops.length > 0) {
+              console.debug('[ColetorHome] new cooperatives detected', { newIds: newCoops.map((c: any) => c.id) });
+              // atualiza estado exibindo lista transformada e notifica
+              transformAndSetCooperativas(dadosC);
+              newCoops.forEach((coop: any) => {
+                if (!notifiedCoopsRef.current.has(coop.id)) {
+                  console.debug('[ColetorHome] notifying cooperativa', coop.id);
+                  notifiedCoopsRef.current.add(coop.id);
+                  const title = 'Nova Cooperativa Cadastrada';
+                  const nome = coop.nome || coop.nome_empresa || 'Cooperativa';
+                  const endereco = coop.rua || coop.endereco || '';
+                  const message = `${title}: ${nome} — ${endereco}`;
+                  showBrowserNotification(title, `${nome} — ${endereco}`);
+                } else {
+                  console.debug('[ColetorHome] cooperativa already notified', coop.id);
+                }
+              });
+            } else {
+              // atualiza estado sem notificar
+              transformAndSetCooperativas(dadosC);
+            }
+            prevCooperativasRef.current = Array.isArray(raw) ? raw : [];
+          }
+        } catch (err) {
+          console.warn('Erro no polling de cooperativas:', err);
+        }
+
+      } catch (err) {
+        console.warn('Erro no polling geral:', err);
+      }
+    };
+
+    const start = () => {
+      // faz uma chamada imediata e depois repete a cada 30s
+      poll();
+      intervalId = setInterval(poll, 30000);
+    };
+
+    // só rodar o polling quando o coletor estiver na tela inicial de coletas
+    if (etapa === 'INICIO') start();
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [etapa]);
+
   // ACEITAR COLETA
   const aceitarColeta = async (c: any) => {
     console.log("=== ACEITAR COLETA ===");
@@ -277,7 +454,7 @@ export default function ColetorHome() {
         alert(`Erro ao aceitar: ${erroData.detail || response.statusText}`);
         return;
       }
-      
+
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const origem = new LatLng(pos.coords.latitude, pos.coords.longitude);
@@ -296,7 +473,7 @@ export default function ColetorHome() {
   const confirmarColeta = async () => {
     try {
       const response = await apiFetch.request(`/api/coletas/${selecionada.id}/status/`, 'PATCH', { status: 'CONFIRMADA' });
-      if(!response.ok) throw new Error();
+      if (!response.ok) throw new Error();
 
       const latP = parseFloat(selecionada.produtor.latitude);
       const lngP = parseFloat(selecionada.produtor.longitude);
@@ -428,7 +605,7 @@ export default function ColetorHome() {
       if (!selecionada?.id) return;
 
       const response = await apiFetch.request(`/api/coletas/${selecionada.id}/status/`, 'PATCH', { status: 'AGUARDANDO' });
-      
+
       if (!response.ok) {
         const errData = await response.json().catch(() => null);
         alert(`Erro: ${errData?.detail || response.statusText}`);
@@ -440,19 +617,19 @@ export default function ColetorHome() {
   };
 
   const resetarEstado = async () => {
-      setEtapa("INICIO");
-      setSelecionada(null);
-      setPontoA(null);
-      setPontoB(null);
-      setResumo(null);
-      setCooperativaSelecionada(null);
-      setLoading(true);
-      try {
-        const resp = await apiFetch.request("/api/coletas/disponiveis/");
-        const dados = await resp.json();
-        setColetas(dados);
-      } catch(e) {}
-      setLoading(false);
+    setEtapa("INICIO");
+    setSelecionada(null);
+    setPontoA(null);
+    setPontoB(null);
+    setResumo(null);
+    setCooperativaSelecionada(null);
+    setLoading(true);
+    try {
+      const resp = await apiFetch.request("/api/coletas/disponiveis/");
+      const dados = await resp.json();
+      setColetas(dados);
+    } catch (e) { }
+    setLoading(false);
   };
 
   // =============================
@@ -465,20 +642,20 @@ export default function ColetorHome() {
       <div className="list-container">
         <h2>Coletas Disponíveis</h2>
         {coletas.map((c) => {
-           const qtdItens = typeof c.itens_count === 'number' ? c.itens_count : (c.itens?.length || 0);
-           const tiposArr = c.tipos || (Array.isArray(c.itens) ? c.itens.map((it:any) => it.tipo_residuo) : []);
-           return (
+          const qtdItens = typeof c.itens_count === 'number' ? c.itens_count : (c.itens?.length || 0);
+          const tiposArr = c.tipos || (Array.isArray(c.itens) ? c.itens.map((it: any) => it.tipo_residuo) : []);
+          return (
             <div className="coleta-card" key={c.id}>
-                <div className="card-content">
-                  <h3>{c.produtor?.nome || "Produtor"}</h3>
-                  <p className="address">{c.produtor?.rua}, {c.produtor?.numero}</p>
-                  <div className="material-info">
-                     {tiposArr.length > 0 ? tiposArr.join(", ") : `${qtdItens} itens`}
-                  </div>
+              <div className="card-content">
+                <h3>{c.produtor?.nome || "Produtor"}</h3>
+                <p className="address">{c.produtor?.rua}, {c.produtor?.numero}</p>
+                <div className="material-info">
+                  {tiposArr.length > 0 ? tiposArr.join(", ") : `${qtdItens} itens`}
                 </div>
-                <button className="btn-primary" onClick={() => aceitarColeta(c)}><FaCheck /> Aceitar Coleta</button>
+              </div>
+              <button className="btn-primary" onClick={() => aceitarColeta(c)}><FaCheck /> Aceitar Coleta</button>
             </div>
-           );
+          );
         })}
       </div>
     );
