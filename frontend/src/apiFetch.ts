@@ -10,7 +10,13 @@ const BASE = envBase || devFallback || '/';
 type ReqMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 function getToken(): string | null {
-    return localStorage.getItem('access');
+    // Tenta várias chaves comuns para aumentar tolerância a formatos diferentes
+    const keys = ['access', 'token', 'access_token', 'auth_token', 'jwt'];
+    for (const k of keys) {
+        const v = localStorage.getItem(k);
+        if (v) return v;
+    }
+    return null;
 }
 
 function setToken(token: string | null) {
@@ -28,6 +34,16 @@ async function request(path: string, method: ReqMethod = 'GET', body?: any): Pro
     };
     const token = getToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    // Debug: loga informação útil para diagnosticar 403/ausência de auth
+    try {
+        // Atenção: não exponha logs de token em produção
+        console.debug('[apiFetch] request', method, path, 'url base=', BASE, 'hasToken=', !!token);
+        if (!token) console.debug('[apiFetch] token ausente em localStorage (chaves checadas: access, token, access_token, auth_token, jwt)');
+        console.debug('[apiFetch] headers ->', headers);
+    } catch (e) {
+        // noop
+    }
 
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     // Se BASE for relativo '/', então `${BASE}${cleanPath}` resulta em '/api/...' (usa proxy do CRA)

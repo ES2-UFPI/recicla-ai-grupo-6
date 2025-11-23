@@ -4,6 +4,31 @@ import django.contrib.gis.db.models.fields
 import django.db.models.deletion
 import django.utils.timezone
 from django.db import migrations, models
+from decimal import Decimal
+
+
+def create_cooperativa_materials(apps, schema_editor):
+    Cooperativa = apps.get_model('aplicativo_web', 'Cooperativa')
+    CooperativaMaterial = apps.get_model(
+        'aplicativo_web', 'CooperativaMaterial')
+    # Valores iniciais conforme interface
+    iniciais = [
+        ('Plástico', Decimal('2.50')),
+        ('Papel', Decimal('1.20')),
+        ('Metal', Decimal('5.00')),
+    ]
+    for coop in Cooperativa.objects.all():
+        for tipo, preco in iniciais:
+            if not CooperativaMaterial.objects.filter(cooperativa_id=coop.id, tipo_residuo=tipo).exists():
+                CooperativaMaterial.objects.create(
+                    cooperativa_id=coop.id, tipo_residuo=tipo, preco_oferecido=preco)
+
+
+def delete_cooperativa_materials(apps, schema_editor):
+    CooperativaMaterial = apps.get_model(
+        'aplicativo_web', 'CooperativaMaterial')
+    tipos = ['Plástico', 'Papel', 'Metal']
+    CooperativaMaterial.objects.filter(tipo_residuo__in=tipos).delete()
 
 
 class Migration(migrations.Migration):
@@ -26,8 +51,10 @@ class Migration(migrations.Migration):
                 ('cep', models.CharField(blank=True, max_length=9, null=True)),
                 ('cidade', models.CharField(blank=True, max_length=100, null=True)),
                 ('estado', models.CharField(blank=True, max_length=2, null=True)),
-                ('geom', django.contrib.gis.db.models.fields.PointField(blank=True, null=True, srid=4326)),
-                ('nota_avaliacao_atual', models.DecimalField(decimal_places=2, default=0.0, max_digits=3)),
+                ('geom', django.contrib.gis.db.models.fields.PointField(
+                    blank=True, null=True, srid=4326)),
+                ('nota_avaliacao_atual', models.DecimalField(
+                    decimal_places=2, default=0.0, max_digits=3)),
                 ('total_avaliacoes', models.IntegerField(default=0)),
             ],
             options={
@@ -49,7 +76,8 @@ class Migration(migrations.Migration):
                 ('bairro', models.CharField(blank=True, max_length=100, null=True)),
                 ('cidade', models.CharField(blank=True, max_length=100, null=True)),
                 ('estado', models.CharField(blank=True, max_length=2, null=True)),
-                ('geom', django.contrib.gis.db.models.fields.PointField(blank=True, null=True, srid=4326)),
+                ('geom', django.contrib.gis.db.models.fields.PointField(
+                    blank=True, null=True, srid=4326)),
             ],
             options={
                 'db_table': 'cooperativa',
@@ -63,17 +91,21 @@ class Migration(migrations.Migration):
                 ('email', models.CharField(max_length=100, unique=True)),
                 ('senha', models.CharField(max_length=255)),
                 ('telefone', models.CharField(blank=True, max_length=20, null=True)),
-                ('cpf_cnpj', models.CharField(blank=True, max_length=18, null=True, unique=True)),
+                ('cpf_cnpj', models.CharField(blank=True,
+                 max_length=18, null=True, unique=True)),
                 ('cep', models.CharField(blank=True, max_length=9, null=True)),
                 ('rua', models.CharField(blank=True, max_length=150, null=True)),
                 ('numero', models.CharField(blank=True, max_length=10, null=True)),
                 ('bairro', models.CharField(blank=True, max_length=100, null=True)),
                 ('cidade', models.CharField(blank=True, max_length=100, null=True)),
                 ('estado', models.CharField(blank=True, max_length=2, null=True)),
-                ('geom', django.contrib.gis.db.models.fields.PointField(blank=True, null=True, srid=4326)),
-                ('nota_avaliacao_atual', models.DecimalField(decimal_places=2, default=0.0, max_digits=3)),
+                ('geom', django.contrib.gis.db.models.fields.PointField(
+                    blank=True, null=True, srid=4326)),
+                ('nota_avaliacao_atual', models.DecimalField(
+                    decimal_places=2, default=0.0, max_digits=3)),
                 ('total_avaliacoes', models.IntegerField(default=0)),
-                ('saldo_pontos', models.DecimalField(decimal_places=2, default=0.0, max_digits=10)),
+                ('saldo_pontos', models.DecimalField(
+                    decimal_places=2, default=0.0, max_digits=10)),
             ],
             options={
                 'db_table': 'produtor',
@@ -82,12 +114,15 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Recompensa',
             fields=[
-                ('id_recompensa', models.AutoField(primary_key=True, serialize=False)),
+                ('id_recompensa', models.AutoField(
+                    primary_key=True, serialize=False)),
                 ('codigo_voucher', models.CharField(max_length=50, unique=True)),
                 ('nome_premio', models.CharField(max_length=100)),
                 ('loja_parceira', models.CharField(max_length=100)),
-                ('status', models.CharField(choices=[('ATIVO', 'Ativo'), ('RESGATADO', 'Resgatado')], max_length=20)),
-                ('id_produtor', models.ForeignKey(db_column='id_produtor', on_delete=django.db.models.deletion.CASCADE, to='aplicativo_web.produtor')),
+                ('status', models.CharField(choices=[
+                 ('ATIVO', 'Ativo'), ('RESGATADO', 'Resgatado')], max_length=20)),
+                ('id_produtor', models.ForeignKey(db_column='id_produtor',
+                 on_delete=django.db.models.deletion.CASCADE, to='aplicativo_web.produtor')),
             ],
             options={
                 'db_table': 'recompensa',
@@ -96,13 +131,24 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='SolicitacaoColeta',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('inicio_coleta', models.DateTimeField(default=django.utils.timezone.now)),
-                ('fim_coleta', models.DateTimeField(default=django.utils.timezone.now)),
-                ('status', models.CharField(choices=[('SOLICITADA', 'Solicitada'), ('ACEITA', 'Aceita'), ('CANCELADA', 'Cancelada'), ('CONFIRMADA', 'Confirmada')], default='SOLICITADA', max_length=20)),
-                ('observacoes', models.CharField(blank=True, max_length=200, null=True)),
-                ('coletor', models.ForeignKey(blank=True, db_column='coletor_id', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='coletas', to='aplicativo_web.coletor')),
-                ('produtor', models.ForeignKey(db_column='produtor_id', on_delete=django.db.models.deletion.CASCADE, related_name='solicitacoes', to='aplicativo_web.produtor')),
+                ('id', models.BigAutoField(auto_created=True,
+                 primary_key=True, serialize=False, verbose_name='ID')),
+                ('inicio_coleta', models.DateTimeField(
+                    default=django.utils.timezone.now)),
+                ('solicitacao', models.DateTimeField(
+                    default=django.utils.timezone.now)),
+                ('fim_coleta', models.DateTimeField(
+                    default=django.utils.timezone.now)),
+                ('status', models.CharField(choices=[('SOLICITADA', 'Solicitada'), ('ACEITA', 'Aceita'), (
+                    'CANCELADA', 'Cancelada'), ('CONFIRMADA', 'Confirmada')], default='SOLICITADA', max_length=20)),
+                ('observacoes', models.CharField(
+                    blank=True, max_length=200, null=True)),
+                ('coletor', models.ForeignKey(blank=True, db_column='coletor_id', null=True,
+                 on_delete=django.db.models.deletion.SET_NULL, related_name='coletas', to='aplicativo_web.coletor')),
+                ('cooperativa', models.ForeignKey(blank=True, db_column='cooperativa_id', null=True,
+                 on_delete=django.db.models.deletion.SET_NULL, related_name='solicitacoes', to='aplicativo_web.cooperativa')),
+                ('produtor', models.ForeignKey(db_column='produtor_id', on_delete=django.db.models.deletion.CASCADE,
+                 related_name='solicitacoes', to='aplicativo_web.produtor')),
             ],
             options={
                 'db_table': 'solicitacao_coleta',
@@ -113,13 +159,45 @@ class Migration(migrations.Migration):
             name='ItemColeta',
             fields=[
                 ('id_item', models.AutoField(primary_key=True, serialize=False)),
-                ('quantidade', models.DecimalField(decimal_places=2, default=0.0, max_digits=10)),
-                ('tipo_residuo', models.CharField(choices=[('Vidro', 'Vidro'), ('Metal', 'Metal'), ('Papel', 'Papel'), ('Plástico', 'Plástico')], default='Plástico', max_length=50)),
-                ('unidade_medida', models.CharField(choices=[('KG', 'KG'), ('UN', 'UN'), ('VOLUME', 'VOLUME')], default='UN', max_length=10)),
-                ('solicitacao', models.ForeignKey(db_column='id_solicitacao', on_delete=django.db.models.deletion.CASCADE, related_name='itens', to='aplicativo_web.solicitacaocoleta')),
+                ('quantidade', models.DecimalField(
+                    decimal_places=2, default=0.0, max_digits=10)),
+                ('tipo_residuo', models.CharField(choices=[('Vidro', 'Vidro'), ('Metal', 'Metal'), (
+                    'Papel', 'Papel'), ('Plástico', 'Plástico')], default='Plástico', max_length=50)),
+                ('unidade_medida', models.CharField(choices=[
+                 ('KG', 'KG'), ('UN', 'UN'), ('VOLUME', 'VOLUME')], default='UN', max_length=10)),
+                ('solicitacao', models.ForeignKey(db_column='id_solicitacao', on_delete=django.db.models.deletion.CASCADE,
+                 related_name='itens', to='aplicativo_web.solicitacaocoleta')),
             ],
             options={
                 'db_table': 'item_solicitacao',
             },
         ),
+        migrations.CreateModel(
+            name='CooperativaMaterial',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False)),
+                ('tipo_residuo', models.CharField(choices=[('Plástico', 'Plástico'), (
+                    'Papel', 'Papel'), ('Metal', 'Metal'), ('Vidro', 'Vidro')], max_length=50)),
+                ('preco_oferecido', models.DecimalField(
+                    decimal_places=2, max_digits=10)),
+                ('cooperativa', models.ForeignKey(db_column='cooperativa_id',
+                 on_delete=django.db.models.deletion.CASCADE, to='aplicativo_web.cooperativa')),
+            ],
+            options={
+                'db_table': 'cooperativa_material',
+                'unique_together': {('cooperativa', 'tipo_residuo')},
+            },
+        ),
+        # Adiciona restrição CHECK para limitar os tipos de resíduos
+        migrations.RunSQL(
+            sql=(
+                "ALTER TABLE cooperativa_material ADD CONSTRAINT material_valido CHECK (tipo_residuo IN ('Plástico', 'Papel', 'Metal', 'Vidro'))"
+            ),
+            reverse_sql=(
+                "ALTER TABLE cooperativa_material DROP CONSTRAINT material_valido"
+            ),
+        ),
+        # Popula a tabela com os valores iniciais fornecidos na UI (se existirem cooperativas)
+        migrations.RunPython(create_cooperativa_materials,
+                             delete_cooperativa_materials),
     ]

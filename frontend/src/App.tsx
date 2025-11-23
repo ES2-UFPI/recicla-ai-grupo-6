@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
-import GerenciarEntregas from './components/GerenciarEntregas';
+// import GerenciarEntregas from './components/GerenciarEntregas'; // <-- Não precisamos mais deste, pois o CooperativaHome assumiu essa função
 import GerenciarInteresses from './components/GerenciarInteresses';
 import ColetorHistorico from './components/ColetorHistorico';
 
@@ -10,10 +10,12 @@ import AuthScreen from './components/AuthScreen';
 import DashboardLayout from './components/DashboardLayout';
 import ProdutorHome from './components/ProdutorHome';
 import ColetorHome from './components/ColetorHome';
-import CooperativaHome from './components/CooperativaHome';
-import ProdutorSolicitacoes from './components/ProdutorSolicitacoes'; // A nova página que criámos
+import CooperativaHome from './components/CooperativaHome'; // Agora é a tela de Confirmar Entregas
+import CooperativaDashboard from './components/CooperativaDashboard'; // <<< NOVO: Importe o Dashboard (Histórico)
+import ProdutorSolicitacoes from './components/ProdutorSolicitacoes';
 import ColetorInventario from './components/ColetorInventario';
 import 'leaflet/dist/leaflet.css'; // Importa o CSS base do Leaflet
+
 // Definindo os tipos para nosso estado de login
 type User = {
   name: string;
@@ -22,7 +24,7 @@ type User = {
 
 function App() {
   // Começamos sem usuário logado — AuthScreen fará login
-  const [loggedInUser, setLoggedInUser] = useState<User | null>({ name: 'Recicla Teresina', type: 'coletor' });
+  const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
 
   // Função para fazer logout
   const handleLogout = () => {
@@ -53,27 +55,30 @@ function App() {
             </>
           )}
 
-         {loggedInUser.type === 'coletor' && (
+          {loggedInUser.type === 'coletor' && (
             <>
-                {/* Rota principal do coletor (Coletas Disponíveis) */}
-                <Route path="/" element={<ColetorHome />} />
+              {/* Rota principal do coletor (Coletas Disponíveis) */}
+              <Route path="/" element={<ColetorHome />} />
 
-                {/* Rota para o Inventário */}
-                <Route path="/inventario" element={<ColetorInventario />} /> 
+              {/* Rota para o Inventário */}
+              <Route path="/inventario" element={<ColetorInventario />} />
 
-                {/* Rota para o Histórico de Entregas (Minhas Coletas) */}
-                <Route path="/historico" element={<ColetorHistorico />} /> 
+              {/* Rota para o Histórico de Entregas (Minhas Coletas) */}
+              <Route path="/historico" element={<ColetorHistorico />} />
             </>
-        )}
+          )}
 
           {loggedInUser.type === 'cooperativa' && (
-                    <>
-                      <Route path="/" element={<CooperativaHome />} />
-                      <Route path="/confirmar-entregas" element={<GerenciarEntregas />} />
-                      <Route path="/meus-interesses" element={<GerenciarInteresses />} />
-                      {/* <Route path="/gerenciar-coletores" element={<GerenciarColetores />} /> */}
-                    </>
-                  )}
+            <>
+              {/* 1. Home agora é o DASHBOARD (Histórico) */}
+              <Route path="/" element={<CooperativaDashboard />} />
+              
+              {/* 2. Confirmar Entregas agora usa o componente CooperativaHome (que refizemos para isso) */}
+              <Route path="/confirmar-entregas" element={<CooperativaHome />} />
+              
+              <Route path="/meus-interesses" element={<GerenciarInteresses />} />
+            </>
+          )}
 
           {/* Uma rota para caso nenhuma outra combine dentro do dashboard */}
           <Route path="*" element={<div>Página não encontrada.</div>} />
