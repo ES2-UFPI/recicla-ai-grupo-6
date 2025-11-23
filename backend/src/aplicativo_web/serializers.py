@@ -270,3 +270,45 @@ class CooperativaMaterialSerializer(serializers.ModelSerializer):
     class Meta:
         model = CooperativaMaterial
         fields = ['tipo_residuo', 'preco_oferecido']
+
+# --- SERIALIZER PARA AVALIAÇÃO (ISSUE #75) ---
+class AvaliacaoProdutorSerializer(serializers.Serializer):
+    coleta_id = serializers.IntegerField(required=True)
+    nota = serializers.DecimalField(
+        max_digits=3, decimal_places=2, min_value=0.0, max_value=5.0, required=True
+    )
+    comentario = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, data):
+        # 1. Verifica se a coleta existe
+        try:
+            coleta = SolicitacaoColeta.objects.get(pk=data['coleta_id'])
+        except SolicitacaoColeta.DoesNotExist:
+            raise serializers.ValidationError("Coleta não encontrada.")
+        
+        # 2. Verifica se o status permite avaliação (ex: deve estar concluída)
+        if coleta.status not in ['CONCLUIDA', 'CONFIRMADA', 'COLETADO']:
+             raise serializers.ValidationError("Esta coleta ainda não pode ser avaliada.")
+
+        data['coleta_obj'] = coleta
+        return data
+
+    def save(self):
+        coleta = self.validated_data['coleta_obj']
+        nota_nova = self.validated_data['nota']
+        produtor = coleta.produtor
+
+        # Lógica de Cálculo da Média Ponderada
+        # (Média Atual * Total Atual + Nova Nota) / (Total Atual + 1)
+        total_atual = produtor.total_avaliacoes
+        media_atual = produtor.nota_avaliacao_atual
+        
+        # Convertendo para float para calcular
+        nova_media = ((float(media_atual) * total_atual) + float(nota_nova)) / (total_atual + 1)
+        
+        # Salvando no banco
+        produtor.nota_avaliacao_atual = nova_media
+        produtor.total_avaliacoes += 1
+        produtor.save()
+        
+        return produtor

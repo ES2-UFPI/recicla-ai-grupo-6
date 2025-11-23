@@ -1,19 +1,40 @@
-import React from 'react';
-import './HomeContent.css'; // Reutiliza estilos de container
+import React, { useEffect, useState } from 'react';
+import './HomeContent.css'; 
 import { FaStar } from 'react-icons/fa';
 import HistoricoAvaliacoes from './HistoricoAvaliacoes';
+import apiFetch from '../apiFetch'; // Importante: garanta que o caminho está certo
 
-// MOCK DE DADOS
-const MOCK_AVALIACOES = [
-  { id: 1, data: '20/11/2025', autor: 'Carlos Coletor', nota: 5, comentario: 'Muito organizado, materiais limpos.' },
-  { id: 2, data: '18/11/2025', autor: 'Maria Coletora', nota: 4, comentario: 'Demorou um pouco para atender.' },
-  { id: 3, data: '10/11/2025', autor: 'João Silva', nota: 5, comentario: 'Excelente!' },
-  { id: 4, data: '05/11/2025', autor: 'Cooperativa Verde', nota: 5, comentario: 'Separação impecável.' },
+// Mock para o histórico (já que o backend ainda não salva o histórico detalhado, apenas a média)
+const MOCK_HISTORICO = [
+  { id: 1, data: '20/11/2025', autor: 'Sistema', nota: 5, comentario: 'Avaliação registrada.' },
+  { id: 2, data: '18/11/2025', autor: 'Sistema', nota: 4, comentario: 'Avaliação registrada.' },
 ];
 
 const ProdutorAvaliacoes = () => {
-  // Cálculo da média
-  const media = MOCK_AVALIACOES.reduce((acc, curr) => acc + curr.nota, 0) / MOCK_AVALIACOES.length;
+  const [notaMedia, setNotaMedia] = useState(0);
+  const [totalAvaliacoes, setTotalAvaliacoes] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // Busca os dados reais do perfil do produtor ao carregar a página
+  useEffect(() => {
+    const fetchPerfil = async () => {
+      try {
+        const response = await apiFetch.request('/api/produtor/perfil/', 'GET');
+        if (response.ok) {
+          const data = await response.json();
+          // Atualiza o estado com os dados vindos do banco
+          setNotaMedia(parseFloat(data.nota_avaliacao_atual) || 0);
+          setTotalAvaliacoes(data.total_avaliacoes || 0);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar reputação:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPerfil();
+  }, []);
 
   return (
     <div className="home-content">
@@ -32,28 +53,38 @@ const ProdutorAvaliacoes = () => {
         border: '1px solid #dee2e6'
       }}>
         <h2 style={{ margin: 0, color: '#555', fontSize: '1.2rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Média Geral</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+        
+        {loading ? (
+            <p>Carregando...</p>
+        ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
             <span style={{ fontSize: '3.5rem', fontWeight: '800', color: '#2c3e50' }}>
-                {media.toFixed(1)}
+                {notaMedia.toFixed(1)}
             </span>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                 <div style={{ color: '#ffc107', fontSize: '1.5rem' }}>
                     {[...Array(5)].map((_, i) => (
-                        <FaStar key={i} color={i < Math.round(media) ? "#ffc107" : "#cbd3da"} />
+                        <FaStar key={i} color={i < Math.round(notaMedia) ? "#ffc107" : "#cbd3da"} />
                     ))}
                 </div>
                 <span style={{ color: '#888', fontSize: '0.9rem' }}>
-                    Baseado em {MOCK_AVALIACOES.length} avaliações
+                    Baseado em {totalAvaliacoes} avaliações reais
                 </span>
             </div>
-        </div>
+            </div>
+        )}
       </div>
 
-      {/* Lista de Histórico */}
-      <HistoricoAvaliacoes 
-        titulo="Histórico Completo" 
-        avaliacoes={MOCK_AVALIACOES} 
-      />
+      {/* Lista de Histórico (Aviso sobre limitação) */}
+      <div style={{ opacity: 0.7 }}>
+          <p style={{ fontSize: '0.9rem', fontStyle: 'italic', color: '#666' }}>
+            * O histórico detalhado de comentários estará disponível em breve. Abaixo, dados de exemplo.
+          </p>
+          <HistoricoAvaliacoes 
+            titulo="Histórico Completo (Exemplo)" 
+            avaliacoes={MOCK_HISTORICO} 
+          />
+      </div>
     </div>
   );
 };
