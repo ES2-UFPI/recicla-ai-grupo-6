@@ -5,6 +5,8 @@ import "leaflet-routing-machine";
 import "leaflet/dist/leaflet.css";
 import "./Coletas.css";
 import apiFetch from "../apiFetch";
+import ModalAvaliacao from './ModalAvaliacao';
+
 // Mantendo os ícones novos (Spinner e CheckCircle)
 import { FaMapMarkerAlt, FaClock, FaCheck, FaTruck, FaRoute, FaSpinner, FaCheckCircle } from "react-icons/fa";
 
@@ -160,6 +162,7 @@ function Rota({ pontoA, pontoB, onResumo, routeKey }: any) {
 // COMPONENTE PRINCIPAL
 // =============================
 export default function ColetorHome() {
+  const [modalProdutorAberto, setModalProdutorAberto] = useState(false); // Novo estado
   const [coletas, setColetas] = useState<any[]>([]);
   const [selecionada, setSelecionada] = useState<any>(null);
   // Estados atualizados com as novas etapas
@@ -471,20 +474,39 @@ export default function ColetorHome() {
 
   // CONFIRMAR COLETA (Retirada)
   const confirmarColeta = async () => {
-    try {
-      const response = await apiFetch.request(`/api/coletas/${selecionada.id}/status/`, 'PATCH', { status: 'CONFIRMADA' });
-      if (!response.ok) throw new Error();
-
-      const latP = parseFloat(selecionada.produtor.latitude);
-      const lngP = parseFloat(selecionada.produtor.longitude);
-      setPontoA(new LatLng(latP, lngP));
-      setPontoB(null);
-      setResumo(null);
-      setEtapa("SELECIONAR_COOPERATIVA");
-    } catch (e) { alert("Erro ao confirmar coleta."); }
+      setModalProdutorAberto(true);
   };
 
-  // <<< RESTAUREI A LÓGICA COMPLETA DO SEU CÓDIGO ANTIGO AQUI >>>
+    // 2. Nova função que é chamada quando ele dá a nota
+  const handleAvaliarProdutor = async (nota: number) => {
+    console.log(`Coletor avaliou produtor com nota: ${nota}`);
+    
+    try {
+        // Aqui você chamaria o backend para salvar a nota:
+        // await apiFetch.request(`/api/coletas/${selecionada.id}/avaliar/produtor/`, 'POST', { nota });
+        
+        // E depois atualiza o status para 'CONFIRMADA' (Retirada feita)
+        const response = await apiFetch.request(`/api/coletas/${selecionada.id}/status/`, 'PATCH', { status: 'CONFIRMADA' });
+        if (!response.ok) throw new Error();
+
+        // Segue o fluxo normal (Muda a rota no mapa)
+        const latP = parseFloat(selecionada.produtor.latitude);
+        const lngP = parseFloat(selecionada.produtor.longitude);
+        setPontoA(new LatLng(latP, lngP));
+        setPontoB(null); 
+        setResumo(null);
+        
+        setModalProdutorAberto(false); // Fecha modal
+        setEtapa("SELECIONAR_COOPERATIVA"); // Avança tela
+
+    } catch (e) {
+        alert("Erro ao confirmar coleta.");
+    }
+  };
+
+
+
+  // <<<  A LÓGICA COMPLETA DO  CÓDIGO ANTIGO AQUI >>>
   const handleSelecionarCooperativa = async (coop: any) => {
     console.log("Cooperativa selecionada:", coop);
     setCooperativaSelecionada(coop);
@@ -704,30 +726,39 @@ export default function ColetorHome() {
   }
 
   return (
-    <div className="route-container">
-      <h2>{etapa === "R1" ? "Rota até o Produtor" : "Rota até a Cooperativa"}</h2>
-      <div className="route-card">
-        <div className="legend"><span><div className="marker origin"></div> Origem</span><span><div className="marker dest"></div> Destino</span></div>
-        <div className="summary"><div className="item"><FaRoute /> {resumo?.distancia || "..."}</div><div className="item"><FaClock /> {resumo?.tempo || "..."}</div></div>
+    <>
+      <div className="route-container">
+        <h2>{etapa === "R1" ? "Rota até o Produtor" : "Rota até a Cooperativa"}</h2>
+        <div className="route-card">
+          <div className="legend"><span><div className="marker origin"></div> Origem</span><span><div className="marker dest"></div> Destino</span></div>
+          <div className="summary"><div className="item"><FaRoute /> {resumo?.distancia || "..."}</div><div className="item"><FaClock /> {resumo?.tempo || "..."}</div></div>
+        </div>
+        {pontoA && pontoB && (
+          <MapContainer center={pontoA} zoom={14} key={`${etapa}-${pontoB.lat}-${pontoB.lng}`} style={{ height: "450px", width: "100%", borderRadius: "12px", marginTop: "20px" }}>
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <Rota pontoA={pontoA} pontoB={pontoB} onResumo={handleResumo} routeKey={`${etapa}-${pontoB.lat}-${pontoB.lng}`} />
+          </MapContainer>
+        )}
+        {etapa === "R1" && (
+          <>
+            <button className="action-button primary-action" onClick={confirmarColeta}><FaCheck /> Confirmar retirada</button>
+            <button className="action-button danger-action" onClick={cancelarColetaOuEntrega}>❌ Cancelar coleta</button>
+          </>
+        )}
+        {etapa === "R2" && (
+          <>
+            <button className="action-button success-action" onClick={concluirEntrega}><FaTruck /> Cheguei (Solicitar Confirmação)</button>
+            <button className="action-button danger-action" onClick={cancelarColetaOuEntrega}>❌ Cancelar entrega</button>
+          </>
+        )}
       </div>
-      {pontoA && pontoB && (
-        <MapContainer center={pontoA} zoom={14} key={`${etapa}-${pontoB.lat}-${pontoB.lng}`} style={{ height: "450px", width: "100%", borderRadius: "12px", marginTop: "20px" }}>
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          <Rota pontoA={pontoA} pontoB={pontoB} onResumo={handleResumo} routeKey={`${etapa}-${pontoB.lat}-${pontoB.lng}`} />
-        </MapContainer>
-      )}
-      {etapa === "R1" && (
-        <>
-          <button className="action-button primary-action" onClick={confirmarColeta}><FaCheck /> Confirmar retirada</button>
-          <button className="action-button danger-action" onClick={cancelarColetaOuEntrega}>❌ Cancelar coleta</button>
-        </>
-      )}
-      {etapa === "R2" && (
-        <>
-          <button className="action-button success-action" onClick={concluirEntrega}><FaTruck /> Cheguei (Solicitar Confirmação)</button>
-          <button className="action-button danger-action" onClick={cancelarColetaOuEntrega}>❌ Cancelar entrega</button>
-        </>
-      )}
-    </div>
+      <ModalAvaliacao 
+        isOpen={modalProdutorAberto}
+        titulo="Avaliar Produtor"
+        subtitulo={`Como foi a coleta com ${selecionada?.produtor?.nome || 'o produtor'}?`}
+        onConfirmar={handleAvaliarProdutor}
+        onFechar={() => setModalProdutorAberto(false)} 
+      />
+    </>
   );
 }
