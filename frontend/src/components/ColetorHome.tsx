@@ -477,30 +477,50 @@ export default function ColetorHome() {
       setModalProdutorAberto(true);
   };
 
-    // 2. Nova função que é chamada quando ele dá a nota
+    // Função chamada quando o Coletor dá a nota e confirma no modal
   const handleAvaliarProdutor = async (nota: number) => {
     console.log(`Coletor avaliou produtor com nota: ${nota}`);
     
-    try {
-        // Aqui você chamaria o backend para salvar a nota:
-        // await apiFetch.request(`/api/coletas/${selecionada.id}/avaliar/produtor/`, 'POST', { nota });
-        
-        // E depois atualiza o status para 'CONFIRMADA' (Retirada feita)
-        const response = await apiFetch.request(`/api/coletas/${selecionada.id}/status/`, 'PATCH', { status: 'CONFIRMADA' });
-        if (!response.ok) throw new Error();
+    if (!selecionada || !selecionada.id) {
+        alert("Erro: Nenhuma coleta selecionada.");
+        return;
+    }
 
-        // Segue o fluxo normal (Muda a rota no mapa)
+    try {
+        // 1. Primeiro, atualizamos o status para 'CONFIRMADA' (Para permitir a avaliação no backend)
+        const responseStatus = await apiFetch.request(`/api/coletas/${selecionada.id}/status/`, 'PATCH', { status: 'CONFIRMADA' });
+        if (!responseStatus.ok) throw new Error("Erro ao confirmar coleta.");
+
+        // 2. Agora enviamos a avaliação
+        const payloadAvaliacao = {
+            coleta_id: selecionada.id,
+            nota: nota,
+            comentario: "" // Opcional, se quiser adicionar campo de texto no modal depois
+        };
+
+        const responseAvaliacao = await apiFetch.request('/api/avaliar/produtor/', 'POST', payloadAvaliacao);
+        
+        if (!responseAvaliacao.ok) {
+             const err = await responseAvaliacao.json();
+             console.warn("Erro ao salvar avaliação:", err);
+             alert("Coleta confirmada, mas houve um erro ao salvar a avaliação.");
+        } else {
+             alert("Coleta confirmada e avaliação enviada com sucesso!");
+        }
+
+        // 3. Segue o fluxo visual (Limpa mapa e avança)
         const latP = parseFloat(selecionada.produtor.latitude);
         const lngP = parseFloat(selecionada.produtor.longitude);
-        setPontoA(new LatLng(latP, lngP));
+        setPontoA(new LatLng(latP, lngP)); // Nova origem (onde estava o produtor)
         setPontoB(null); 
         setResumo(null);
         
         setModalProdutorAberto(false); // Fecha modal
-        setEtapa("SELECIONAR_COOPERATIVA"); // Avança tela
+        setEtapa("SELECIONAR_COOPERATIVA"); // Avança para próxima etapa
 
     } catch (e) {
-        alert("Erro ao confirmar coleta.");
+        console.error(e);
+        alert("Erro ao processar a confirmação da coleta.");
     }
   };
 
