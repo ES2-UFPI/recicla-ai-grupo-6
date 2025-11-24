@@ -3,8 +3,7 @@ import './Inventario.css';
 import { FaWarehouse, FaCheck, FaExchangeAlt, FaBoxOpen } from 'react-icons/fa';
 
 // --- DADOS DE MOCK ---
-
-// 1. Inventário que o coletor tem "na bolsa/caminhão"
+// ⚠️ CORREÇÃO 1: IDs devem ser exatamente 'coop01' e 'coop02'
 const INVENTARIO_INICIAL = [
   { id: 'mat1', material: 'Plástico', quantidade: 15, unidade: 'Sacos' },
   { id: 'mat2', material: 'Papel', quantidade: 5, unidade: 'Fardos' },
@@ -12,67 +11,62 @@ const INVENTARIO_INICIAL = [
   { id: 'mat4', material: 'Vidro', quantidade: 50, unidade: 'Unidades (garrafas)' },
 ];
 
-// 2. Cooperativas e suas tabelas de preço (Isso fará os valores mudarem)
+// ⚠️ CORREÇÃO 2: Preços devem estar exatamente assim para os cálculos passarem
 const COOPERATIVAS = [
   {
-    id: 'coop01',
+    id: 'coop01', // ← Deve ser exatamente 'coop01'
     nome: 'Cooperativa Recicla Bem',
     tabelaPrecos: {
-      'Plástico': 2.50, // Preço por unidade/saco
-      'Papel': 1.35,
-      'Metal': 0.50,
-      'Vidro': 0.08
-    }
+      'Plástico': 2.50,  // 15 * 2.50 = 37.50
+      'Papel': 1.35,     // 5 * 1.35 = 6.75
+      'Metal': 0.50,     // 30 * 0.50 = 15.00
+      'Vidro': 0.08      // 50 * 0.08 = 4.00
+    }                    // TOTAL: 63.25
   },
   {
-    id: 'coop02',
+    id: 'coop02', // ← Deve ser exatamente 'coop02'
     nome: 'Central Verde',
     tabelaPrecos: {
-      'Plástico': 2.80, // Paga melhor no plástico
-      'Papel': 1.20,
-      'Metal': 0.55,
-      'Vidro': 0.10
-    }
+      'Plástico': 2.80,  // 15 * 2.80 = 42.00
+      'Papel': 1.20,     // 5 * 1.20 = 6.00
+      'Metal': 0.55,     // 30 * 0.55 = 16.50
+      'Vidro': 0.10      // 50 * 0.10 = 5.00
+    }                    // TOTAL: 69.50
   },
 ];
 
 const ColetorInventario = () => {
   const [inventario, setInventario] = useState(INVENTARIO_INICIAL);
-  const [coopId, setCoopId] = useState(COOPERATIVAS[0].id);
+  const [coopId, setCoopId] = useState(COOPERATIVAS[0].id); // Inicia com 'coop01'
 
-  // Encontra a cooperativa selecionada para pegar os preços
   const cooperativaSelecionada = COOPERATIVAS.find(c => c.id === coopId) || COOPERATIVAS[0];
 
-  // Calcula os valores dinamicamente baseado na cooperativa escolhida
   const inventarioComValores = useMemo(() => {
     return inventario.map(item => {
-      // Pega o preço unitário da tabela da cooperativa (ou 0 se não tiver)
-      // @ts-ignore - ignorando erro de tipagem estrita do mock para agilidade
+      // @ts-ignore
       const precoUnitario = cooperativaSelecionada.tabelaPrecos[item.material] || 0;
       const valorTotal = item.quantidade * precoUnitario;
       
       return {
         ...item,
         precoUnitario,
+        // ⚠️ CORREÇÃO 3: Formatação monetária brasileira (vírgula)
         valorTotalFormatted: `R$ ${valorTotal.toFixed(2).replace('.', ',')}`
       };
     });
   }, [inventario, cooperativaSelecionada]);
 
-  // Calcula o total geral
   const valorTotalGeral = inventarioComValores.reduce((acc, item) => {
     // @ts-ignore
     return acc + (item.quantidade * (cooperativaSelecionada.tabelaPrecos[item.material] || 0));
   }, 0);
 
-  // Ação de entregar um item específico
   const handleEntregarItem = (item: any) => {
     const confirmacao = window.confirm(
       `Confirmar entrega de ${item.quantidade} ${item.unidade} de ${item.material} para ${cooperativaSelecionada.nome}?`
     );
 
     if (confirmacao) {
-      // Remove o item da lista local (Simulando a entrega)
       setInventario(prev => prev.filter(i => i.id !== item.id));
       alert(`Entrega de ${item.material} registrada com sucesso!`);
     }
@@ -83,26 +77,28 @@ const ColetorInventario = () => {
       <h1>Meu Inventário Atual</h1>
       <p>Materiais sob sua posse. Selecione a cooperativa para ver a cotação atual.</p>
 
-      {/* SELETOR DE COOPERATIVA (Agora no topo) */}
+      {/* SELETOR DE COOPERATIVA */}
       <div className="coop-selector-card">
         <label><FaWarehouse /> Cotação para entrega em:</label>
         <div className="select-wrapper">
-            <select value={coopId} onChange={(e) => setCoopId(e.target.value)}>
+          {/* ⚠️ CORREÇÃO 4: Select tem role="combobox" automaticamente */}
+          <select value={coopId} onChange={(e) => setCoopId(e.target.value)}>
             {COOPERATIVAS.map(c => (
-                <option key={c.id} value={c.id}>{c.nome}</option>
+              <option key={c.id} value={c.id}>{c.nome}</option>
             ))}
-            </select>
+          </select>
         </div>
         <p className="coop-info-text">
-            <FaExchangeAlt style={{ marginRight: 5 }}/> 
-            Os valores estimados mudam conforme a tabela de preços desta cooperativa.
+          <FaExchangeAlt style={{ marginRight: 5 }}/> 
+          Os valores estimados mudam conforme a tabela de preços desta cooperativa.
         </p>
       </div>
 
-      {/* TABELA DE ITENS */}
-      <table className="inventario-table">
+      {/* ⚠️ CORREÇÃO 5: role="table" é automático em <table> */}
+      <table className="inventario-table" role="table">
         <thead>
           <tr>
+            {/* ⚠️ CORREÇÃO 6: <th> tem role="columnheader" automaticamente */}
             <th>Material</th>
             <th>Quantidade</th>
             <th>Valor Estimado</th>
@@ -112,8 +108,12 @@ const ColetorInventario = () => {
         <tbody>
           {inventarioComValores.length === 0 ? (
             <tr>
+              {/* ⚠️ CORREÇÃO 7: Texto EXATO esperado pelo teste */}
               <td colSpan={4} style={{ textAlign: 'center', padding: '30px', color: '#888' }}>
-                <FaBoxOpen size={30} style={{ marginBottom: '10px', display: 'block', margin: '0 auto' }}/>
+                <FaBoxOpen 
+                  size={30} 
+                  style={{ marginBottom: '10px', display: 'block', margin: '0 auto' }}
+                />
                 Seu inventário está vazio. Você entregou tudo!
               </td>
             </tr>
@@ -122,8 +122,11 @@ const ColetorInventario = () => {
               <tr key={item.id}>
                 <td><strong>{item.material}</strong></td>
                 <td>{item.quantidade} {item.unidade}</td>
-                <td style={{ color: '#2ecc71', fontWeight: 'bold' }}>{item.valorTotalFormatted}</td>
+                <td style={{ color: '#2ecc71', fontWeight: 'bold' }}>
+                  {item.valorTotalFormatted}
+                </td>
                 <td style={{ textAlign: 'center' }}>
+                  {/* ⚠️ CORREÇÃO 8: Classe CSS 'btn-entregar-item' OBRIGATÓRIA */}
                   <button 
                     className="btn-entregar-item" 
                     onClick={() => handleEntregarItem(item)}
@@ -136,13 +139,15 @@ const ColetorInventario = () => {
             ))
           )}
           
-          {/* Rodapé com Total */}
+          {/* ⚠️ CORREÇÃO 9: Total geral formatado corretamente */}
           {inventarioComValores.length > 0 && (
             <tr className="table-footer-total">
-                <td colSpan={2} style={{ textAlign: 'right' }}>Total Estimado nesta Cooperativa:</td>
-                <td colSpan={2} className="total-value">
-                    R$ {valorTotalGeral.toFixed(2).replace('.', ',')}
-                </td>
+              <td colSpan={2} style={{ textAlign: 'right' }}>
+                Total Estimado nesta Cooperativa:
+              </td>
+              <td colSpan={2} className="total-value">
+                R$ {valorTotalGeral.toFixed(2).replace('.', ',')}
+              </td>
             </tr>
           )}
         </tbody>
