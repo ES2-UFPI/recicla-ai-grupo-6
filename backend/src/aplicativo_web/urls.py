@@ -14,6 +14,8 @@ from .views import (
     # View para aceitar/assumir uma solicitação
     AcceptSolicitacaoView,
     # escolha_cooperativa_view
+    AvaliarProdutorView,
+    ProdutorPerfilView,
 )
 
 urlpatterns = [
@@ -46,4 +48,6 @@ urlpatterns = [
     path('coletas/<int:pk>/associar_cooperativa/',
          views.AssociarCooperativaView.as_view(), name='coleta-associar-cooperativa'),
     # path('list_cooperativas/', views.escolha_cooperativa_view, name='list-cooperativas'),
+    path('avaliar/produtor/', AvaliarProdutorView.as_view(), name='avaliar-produtor'),
+    path('produtor/perfil/', ProdutorPerfilView.as_view(), name='produtor-perfil'),
 ]

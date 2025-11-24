@@ -114,3 +114,134 @@
       background-color: #e0a800;
     }
     
+    .inventario-container {
+  background: #fff;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.inventario-container h1 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.inventario-container p {
+  color: #555;
+  font-size: 1.1rem;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+/* --- Novo Card de Seleção de Cooperativa --- */
+.coop-selector-card {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid #e9ecef;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.coop-selector-card label {
+  font-weight: 700;
+  color: #2c3e50;
+  display: block;
+  margin-bottom: 10px;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.coop-selector-card select {
+  padding: 10px 15px;
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  font-size: 1rem;
+  color: #495057;
+  width: 100%;
+  max-width: 400px;
+  cursor: pointer;
+}
+
+.coop-info-text {
+  font-size: 0.9rem !important;
+  color: #6c757d !important;
+  margin-top: 10px !important;
+  margin-bottom: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Tabela --- */
+.inventario-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.inventario-table th,
+.inventario-table td {
+  border-bottom: 1px solid #eee;
+  padding: 15px 15px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.inventario-table th {
+  background-color: #f1f3f5;
+  color: #495057;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.inventario-table td {
+  color: #333;
+  font-size: 1rem;
+}
+
+/* Botão Individual de Entrega */
+.btn-entregar-item {
+  background-color: #fff;
+  border: 1px solid #28a745;
+  color: #28a745;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-entregar-item:hover {
+  background-color: #28a745;
+  color: #fff;
+}
+
+/* Footer de Total */
+.table-footer-total {
+  background-color: #f8f9fa;
+  border-top: 2px solid #dee2e6;
+}
+
+.table-footer-total td {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.table-footer-total .total-value {
+  color: #28a745;
+  font-size: 1.3rem;
+}

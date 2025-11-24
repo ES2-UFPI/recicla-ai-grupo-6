@@ -3,34 +3,32 @@ import './HomeContent.css';
 import { FaTrash } from 'react-icons/fa6';
 import apiFetch from '../apiFetch';
 
-// ATUALIZADO: Mapeamento de Categorias (apenas as 4 principais)
-// Isso define o que o usuário VÊ (a Unidade)
+
+// ATUALIZADO: Mapeamento de Categorias
 const UNIDADES_VISUAIS: Record<string, string> = {
   'Plástico': 'Sacos (Volume)',
   'Papel': 'Sacos (Volume)',
   'Vidro': 'Unidades',
   'Metal': 'Unidades',
 };
-// Pega apenas os nomes das categorias para o <select>
 const CATEGORIAS_DISPONIVEIS = Object.keys(UNIDADES_VISUAIS);
 
-// Mapeamento das labels visuais para os códigos aceitos pelo backend
 const UNIDADE_LABEL_PARA_CODIGO: Record<string, string> = {
   'Sacos (Volume)': 'VOLUME',
   'Unidades': 'UN',
 };
 
-// Interface para um item na lista (frontend)
 interface ItemDeColeta {
-  id: string; // ID local, apenas para o React
+  id: string;
   categoria: string;
   quantidade: number;
   unidade: string;
 }
 
-const ProdutorHome = () => {
-  // --- Estados para o NOVO formulário ---
 
+
+const ProdutorHome = () => {
+  // --- Estados do Formulário ---
   const [itemCategoria, setItemCategoria] = useState(CATEGORIAS_DISPONIVEIS[0]);
   const [itemQuantidade, setItemQuantidade] = useState(1);
   const [listaItens, setListaItens] = useState<ItemDeColeta[]>([]);
@@ -40,21 +38,16 @@ const ProdutorHome = () => {
   const [feedback, setFeedback] = useState('');
 
   // --- Funções do Formulário ---
-
   const handleAddItem = (e: React.MouseEvent) => {
     e.preventDefault();
-
     const unidadeVisual = UNIDADES_VISUAIS[itemCategoria];
-
     const novoItem: ItemDeColeta = {
       id: new Date().toISOString(),
       categoria: itemCategoria,
       quantidade: itemQuantidade,
       unidade: unidadeVisual,
     };
-
     setListaItens(prevLista => [...prevLista, novoItem]);
-
     setItemCategoria(CATEGORIAS_DISPONIVEIS[0]);
     setItemQuantidade(1);
     setFeedback('');
@@ -90,8 +83,6 @@ const ProdutorHome = () => {
       fim_coleta: fimColeta,
     };
 
-    console.log('NOVA SOLICITAÇÃO DE COLETA (enviando para API):', solicitacaoDeColeta);
-
     try {
       const resp = await apiFetch.solicitarColeta(solicitacaoDeColeta);
       if (resp.ok) {
@@ -116,12 +107,10 @@ const ProdutorHome = () => {
       <p>Adicione os materiais que você separou, um por um, e defina a quantidade.</p>
 
       <form className="coleta-form" onSubmit={handleSubmit}>
-
         {/* Seção 1: Adicionar Itens */}
         <fieldset className="form-section">
           <legend>1. Adicionar Itens</legend>
           <div className="add-item-form">
-
             <div className="form-group-vertical" style={{ flexGrow: 2 }}>
               <label htmlFor="itemCategoria">Categoria do Material</label>
               <select
@@ -129,7 +118,6 @@ const ProdutorHome = () => {
                 value={itemCategoria}
                 onChange={(e) => setItemCategoria(e.target.value)}
               >
-                {/* Esta lista agora só terá as 4 opções */}
                 {CATEGORIAS_DISPONIVEIS.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
@@ -183,10 +171,9 @@ const ProdutorHome = () => {
           </div>
         </fieldset>
 
-        {/* Seção 3: Detalhes Finais (COM CAMPOS DE HORA) */}
+        {/* Seção 3: Detalhes Finais */}
         <fieldset className="form-section">
           <legend>3. Detalhes Finais</legend>
-
           <div className="form-row-horizontal">
             <div className="form-group-vertical">
               <label htmlFor="inicioColeta">Disponível a partir de:</label>
@@ -197,7 +184,6 @@ const ProdutorHome = () => {
               <input type="datetime-local" id="fimColeta" value={fimColeta} onChange={(e) => setFimColeta(e.target.value)} required />
             </div>
           </div>
-
           <div className="form-group-vertical" style={{ marginTop: '20px' }}>
             <label htmlFor="observacoes">Observações (opcional):</label>
             <textarea
@@ -218,6 +204,10 @@ const ProdutorHome = () => {
           </p>
         )}
       </form>
+
+   
+        
+     
     </div>
   );
 };

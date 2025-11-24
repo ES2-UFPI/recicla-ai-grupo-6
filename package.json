@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "@types/clear": "^0.1.4",
+    "@types/jest": "^30.0.0"
+  }
+}

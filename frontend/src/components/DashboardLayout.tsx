@@ -1,11 +1,11 @@
 import React from 'react';
 import './DashboardLayout.css'; // O CSS para o nosso novo layout
-import { FaRecycle, FaSignOutAlt, FaPlusCircle, FaListAlt, FaMapMarkedAlt, FaChartBar,FaClipboardList, FaDollarSign, FaUsers,FaBoxes } from 'react-icons/fa';
+import { FaRecycle, FaSignOutAlt, FaPlusCircle, FaListAlt, FaMapMarkedAlt, FaChartBar,FaClipboardList, FaDollarSign,FaStar,FaBoxes,} from 'react-icons/fa';
 import { NavLink } from 'react-router-dom'; // Importa o NavLink
 // Definindo as propriedades que o layout receberá
 interface DashboardLayoutProps {
   user: {
-    name: string;
+    name: string;           
     type: 'produtor' | 'coletor' | 'cooperativa';
   };
   onLogout: () => void; // A função de logout que virá do App.tsx
@@ -23,6 +23,7 @@ const renderNavLinks = () => {
           {/* A prop 'end' no primeiro link evita que ele fique ativo sempre */}
           <NavLink to="/" end className="nav-link"><FaPlusCircle /> Solicitar Coleta</NavLink>
           <NavLink to="/minhas-solicitacoes" className="nav-link"><FaListAlt /> Minhas Solicitações</NavLink>
+          <NavLink to="/minhas-avaliacoes" className="nav-link"><FaStar /> Minhas Avaliações</NavLink>
         </>
       );
 case 'coletor':

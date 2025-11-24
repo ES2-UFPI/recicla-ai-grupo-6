@@ -10,6 +10,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import permissions
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
+from .serializers import AvaliacaoProdutorSerializer
+from rest_framework.generics import RetrieveAPIView
 
 from .serializers import (
     ProdutorRegistrationSerializer, ColetorRegistrationSerializer,
@@ -583,3 +585,64 @@ class AssociarCooperativaView(APIView):
 
         except Exception as e:
             return Response({'detail': f'Erro inesperado: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# --- VIEW PARA AVALIAR PRODUTOR (ISSUE #75) ---
+class AvaliarProdutorView(APIView):
+    permission_classes = [permissions.AllowAny] 
+
+    def post(self, request):
+        # 1. Autenticação Manual (verificar se é Coletor)
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+             return Response({'detail': 'Token não fornecido.'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        try:
+            raw_token = auth_header.split(' ')[1]
+            from rest_framework_simplejwt.authentication import JWTAuthentication
+            jwt_auth = JWTAuthentication()
+            validated_token = jwt_auth.get_validated_token(raw_token)
+            
+            user_type = validated_token.payload.get('user_type')
+            user_id = validated_token.payload.get('user_id')
+
+            if user_type != 'coletor':
+                return Response({'detail': 'Apenas coletores podem avaliar produtores.'}, status=status.HTTP_403_FORBIDDEN)
+
+        except Exception as e:
+             return Response({'detail': 'Token inválido.'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # 2. Processar Avaliação
+        serializer = AvaliacaoProdutorSerializer(data=request.data)
+        if serializer.is_valid():
+            # Opcional: Verificar se a coleta pertence a este coletor
+            coleta = SolicitacaoColeta.objects.get(pk=request.data['coleta_id'])
+            if coleta.coletor_id != user_id:
+                 return Response({'detail': 'Você não pode avaliar uma coleta que não é sua.'}, status=status.HTTP_403_FORBIDDEN)
+
+            serializer.save()
+            return Response({'detail': 'Avaliação enviada com sucesso!'}, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# --- View para o Produtor ver seu Perfil/Nota ---
+class ProdutorPerfilView(APIView):
+    permission_classes = [IsProdutor]
+
+    def get(self, request):
+        try:
+            # Pega o ID do usuário logado (do token)
+            auth_payload = getattr(request, 'auth_payload', None)
+            if not auth_payload or 'user_id' not in auth_payload:
+                 return Response({'detail': 'Erro de autenticação.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+            user_id = auth_payload.get('user_id')
+            produtor = Produtor.objects.get(pk=user_id)
+            
+            return Response({
+                "nome": produtor.nome,
+                "email": produtor.email,
+                "nota_avaliacao_atual": produtor.nota_avaliacao_atual,
+                "total_avaliacoes": produtor.total_avaliacoes,
+                "saldo_pontos": produtor.saldo_pontos
+            })
+        except Produtor.DoesNotExist:
+            return Response({'detail': 'Produtor não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
