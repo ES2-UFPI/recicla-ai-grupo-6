@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict EBJRaFTbajzwJIXumWEVgQCO7WZTWOkvTenvZKiWB37IfrLWgb6U52lL1vdtnpG
+\restrict 4vzhFf2M5jToG2HmQZZo7wE9ceL9cbpXwPJrdMeBVYsCQ2Gr95fFOwYtq3rOvcf
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
 
--- Started on 2025-11-17 00:57:41
+-- Started on 2025-11-23 21:27:34
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -30,7 +30,7 @@ CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
 
 
 --
--- TOC entry 5901 (class 0 OID 0)
+-- TOC entry 5934 (class 0 OID 0)
 -- Dependencies: 2
 -- Name: EXTENSION postgis; Type: COMMENT; Schema: -; Owner: 
 --
@@ -264,7 +264,7 @@ CREATE SEQUENCE public.coletor_id_seq
 ALTER SEQUENCE public.coletor_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5902 (class 0 OID 0)
+-- TOC entry 5935 (class 0 OID 0)
 -- Dependencies: 225
 -- Name: coletor_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -313,7 +313,7 @@ CREATE SEQUENCE public.cooperativa_id_seq
 ALTER SEQUENCE public.cooperativa_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5903 (class 0 OID 0)
+-- TOC entry 5936 (class 0 OID 0)
 -- Dependencies: 227
 -- Name: cooperativa_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -354,7 +354,7 @@ CREATE SEQUENCE public.cooperativa_material_id_seq
 ALTER SEQUENCE public.cooperativa_material_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5904 (class 0 OID 0)
+-- TOC entry 5937 (class 0 OID 0)
 -- Dependencies: 254
 -- Name: cooperativa_material_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -505,7 +505,7 @@ CREATE SEQUENCE public.item_solicitacao_id_item_seq
 ALTER SEQUENCE public.item_solicitacao_id_item_seq OWNER TO postgres;
 
 --
--- TOC entry 5905 (class 0 OID 0)
+-- TOC entry 5938 (class 0 OID 0)
 -- Dependencies: 231
 -- Name: item_solicitacao_id_item_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -557,7 +557,7 @@ CREATE SEQUENCE public.produtor_id_seq
 ALTER SEQUENCE public.produtor_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5906 (class 0 OID 0)
+-- TOC entry 5939 (class 0 OID 0)
 -- Dependencies: 223
 -- Name: produtor_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -600,7 +600,7 @@ CREATE SEQUENCE public.recompensa_id_recompensa_seq
 ALTER SEQUENCE public.recompensa_id_recompensa_seq OWNER TO postgres;
 
 --
--- TOC entry 5907 (class 0 OID 0)
+-- TOC entry 5940 (class 0 OID 0)
 -- Dependencies: 252
 -- Name: recompensa_id_recompensa_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -623,7 +623,7 @@ CREATE TABLE public.solicitacao_coleta (
     observacoes character varying(200),
     solicitacao timestamp without time zone,
     cooperativa_id integer,
-    CONSTRAINT solicitacao_coleta_status_check CHECK (((status)::text = ANY ((ARRAY['SOLICITADA'::character varying, 'ACEITA'::character varying, 'CANCELADA'::character varying, 'CONFIRMADA'::character varying])::text[])))
+    CONSTRAINT solicitacao_coleta_status_check CHECK (((status)::text = ANY ((ARRAY['SOLICITADA'::character varying, 'ACEITA'::character varying, 'CANCELADA'::character varying, 'CONFIRMADA'::character varying, 'AGUARDANDO'::character varying])::text[])))
 );
 
 
@@ -646,7 +646,7 @@ CREATE SEQUENCE public.solicitacao_coleta_id_seq
 ALTER SEQUENCE public.solicitacao_coleta_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5908 (class 0 OID 0)
+-- TOC entry 5941 (class 0 OID 0)
 -- Dependencies: 229
 -- Name: solicitacao_coleta_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -708,6 +708,434 @@ ALTER TABLE ONLY public.recompensa ALTER COLUMN id_recompensa SET DEFAULT nextva
 --
 
 ALTER TABLE ONLY public.solicitacao_coleta ALTER COLUMN id SET DEFAULT nextval('public.solicitacao_coleta_id_seq'::regclass);
+
+
+--
+-- TOC entry 5913 (class 0 OID 24524)
+-- Dependencies: 240
+-- Data for Name: auth_group; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.auth_group (id, name) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5915 (class 0 OID 24532)
+-- Dependencies: 242
+-- Data for Name: auth_group_permissions; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.auth_group_permissions (id, group_id, permission_id) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5911 (class 0 OID 24518)
+-- Dependencies: 238
+-- Data for Name: auth_permission; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
+1	Can add log entry	1	add_logentry
+2	Can change log entry	1	change_logentry
+3	Can delete log entry	1	delete_logentry
+4	Can view log entry	1	view_logentry
+5	Can add permission	2	add_permission
+6	Can change permission	2	change_permission
+7	Can delete permission	2	delete_permission
+8	Can view permission	2	view_permission
+9	Can add group	3	add_group
+10	Can change group	3	change_group
+11	Can delete group	3	delete_group
+12	Can view group	3	view_group
+13	Can add user	4	add_user
+14	Can change user	4	change_user
+15	Can delete user	4	delete_user
+16	Can view user	4	view_user
+17	Can add content type	5	add_contenttype
+18	Can change content type	5	change_contenttype
+19	Can delete content type	5	delete_contenttype
+20	Can view content type	5	view_contenttype
+21	Can add coletor	6	add_coletor
+22	Can change coletor	6	change_coletor
+23	Can delete coletor	6	delete_coletor
+24	Can view coletor	6	view_coletor
+25	Can add cooperativa	7	add_cooperativa
+26	Can change cooperativa	7	change_cooperativa
+27	Can delete cooperativa	7	delete_cooperativa
+28	Can view cooperativa	7	view_cooperativa
+29	Can add produtor	8	add_produtor
+30	Can change produtor	8	change_produtor
+31	Can delete produtor	8	delete_produtor
+32	Can view produtor	8	view_produtor
+33	Can add solicitacao coleta	9	add_solicitacaocoleta
+34	Can change solicitacao coleta	9	change_solicitacaocoleta
+35	Can delete solicitacao coleta	9	delete_solicitacaocoleta
+36	Can view solicitacao coleta	9	view_solicitacaocoleta
+37	Can add item coleta	10	add_itemcoleta
+38	Can change item coleta	10	change_itemcoleta
+39	Can delete item coleta	10	delete_itemcoleta
+40	Can view item coleta	10	view_itemcoleta
+41	Can add session	11	add_session
+42	Can change session	11	change_session
+43	Can delete session	11	delete_session
+44	Can view session	11	view_session
+\.
+
+
+--
+-- TOC entry 5917 (class 0 OID 24538)
+-- Dependencies: 244
+-- Data for Name: auth_user; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.auth_user (id, password, last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5919 (class 0 OID 24546)
+-- Dependencies: 246
+-- Data for Name: auth_user_groups; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.auth_user_groups (id, user_id, group_id) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5921 (class 0 OID 24552)
+-- Dependencies: 248
+-- Data for Name: auth_user_user_permissions; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.auth_user_user_permissions (id, user_id, permission_id) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5899 (class 0 OID 23283)
+-- Dependencies: 226
+-- Data for Name: coletor; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.coletor (id, nome, email, senha, telefone, cpf, cep, cidade, estado, geom, nota_avaliacao_atual, total_avaliacoes) FROM stdin;
+1	Coletor 1	coletor1@gmail.com	teste	86 9 1324-5678	c1		Teresina	PI	\N	0.00	0
+2	Andressa	andressa@gmail.com	teste	86 9 1324-5678	coletor2		Teresina	PI	\N	0.00	0
+\.
+
+
+--
+-- TOC entry 5901 (class 0 OID 23296)
+-- Dependencies: 228
+-- Data for Name: cooperativa; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.cooperativa (id, nome_empresa, email, senha, telefone, cnpj, cep, rua, numero, bairro, cidade, estado, geom) FROM stdin;
+3	UFPI	ufpi@gmail.com	teste	86 9 1234-5678	UFPI	64049550	Avenida Universitária		Ininga	Teresina	PI	\N
+4	MP3	mp3@gmail.com	teste	86 9 1234-5678	mp3	64019625	Avenida Professor Valter Alencar		São Pedro	Teresina	PI	\N
+5	Igreja	igreja@gmail.com	teste	86 9 1234-5678	igreja	64018220	Rua Paulistana		Tabuleta	Teresina	PI	\N
+9	cooperativa teste	teste123@gmail.com	teste	teste	heyehy	64018030	Rua João Cabral		Vermelha	Teresina	PI	\N
+10	CCHL	cchl@gmail.com	teste	teste	cchl	64018030	Rua João Cabral		Vermelha	Teresina	PI	\N
+11	CCN - UFPI	ccn@gmail.com	teste	teste	CCN - UFPI	64018030	Rua João Cabral		Vermelha	Teresina	PI	\N
+12	CCS - UFPI	ccs@gmail.com	teste	teste	ccs ufpi	64018030	Rua João Cabral		Vermelha	Teresina	PI	\N
+13	Departamento de Computação - UFPI	comp@gmail.com	teste	teste	dc ufpi	64018030	Rua João Cabral		Vermelha	Teresina	PI	\N
+14	Enfermagem UFPI	enf@gmail.com	teste	teste	enf	64018030	Rua João Cabral		Vermelha	Teresina	PI	\N
+15	Jornalismo - UFPI	jornalismo@gmail.com	teste	teste	jornal	64018030	Rua João Cabral		Vermelha	Teresina	PI	\N
+16	COP30	cop30@gmail.com	teste	teste	cop30	64018030	Rua João Cabral		Vermelha	Teresina	PI	\N
+17	centro espirita	espiritismo@gmail.com	teste	teste	esp	64018030	Rua João Cabral		Vermelha	Teresina	PI	\N
+18	DC - UFPI	dc_novo@gmail.com	teste	teste	dc novo	64018030	Rua João Cabral		Vermelha	Teresina	PI	\N
+19	Matematica UFPI	mat@gmail.com	teste	teste	mat	64018030	Rua João Cabral		Vermelha	Teresina	PI	\N
+20	Medicina UFPI	med@gmail.com	teste	teste	med	64018030	Rua João Cabral		Vermelha	Teresina	PI	\N
+\.
+
+
+--
+-- TOC entry 5928 (class 0 OID 26074)
+-- Dependencies: 255
+-- Data for Name: cooperativa_material; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.cooperativa_material (id, cooperativa_id, tipo_residuo, preco_oferecido) FROM stdin;
+4	4	Plástico	2.50
+1	3	Plástico	4.00
+3	3	Vidro	1.00
+5	3	Metal	5.00
+\.
+
+
+--
+-- TOC entry 5923 (class 0 OID 24610)
+-- Dependencies: 250
+-- Data for Name: django_admin_log; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.django_admin_log (id, action_time, object_id, object_repr, action_flag, change_message, content_type_id, user_id) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5909 (class 0 OID 24510)
+-- Dependencies: 236
+-- Data for Name: django_content_type; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.django_content_type (id, app_label, model) FROM stdin;
+1	admin	logentry
+2	auth	permission
+3	auth	group
+4	auth	user
+5	contenttypes	contenttype
+6	aplicativo_web	coletor
+7	aplicativo_web	cooperativa
+8	aplicativo_web	produtor
+9	aplicativo_web	solicitacaocoleta
+10	aplicativo_web	itemcoleta
+11	sessions	session
+\.
+
+
+--
+-- TOC entry 5907 (class 0 OID 24502)
+-- Dependencies: 234
+-- Data for Name: django_migrations; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.django_migrations (id, app, name, applied) FROM stdin;
+1	contenttypes	0001_initial	2025-10-21 21:14:05.457109-03
+2	auth	0001_initial	2025-10-21 21:14:05.648858-03
+3	admin	0001_initial	2025-10-21 21:14:05.698442-03
+4	admin	0002_logentry_remove_auto_add	2025-10-21 21:14:05.729695-03
+5	admin	0003_logentry_add_action_flag_choices	2025-10-21 21:14:05.752257-03
+6	aplicativo_web	0001_initial	2025-10-21 21:17:41.927486-03
+7	aplicativo_web	0002_solicitacaocoleta_observacoes_and_more	2025-10-21 21:17:41.957688-03
+8	aplicativo_web	0003_remove_solicitacaocoleta_data_criacao_and_more	2025-10-21 21:47:59.896367-03
+9	contenttypes	0002_remove_content_type_name	2025-10-21 22:36:35.551954-03
+10	auth	0002_alter_permission_name_max_length	2025-10-21 22:36:35.602642-03
+11	auth	0003_alter_user_email_max_length	2025-10-21 22:36:35.62711-03
+12	auth	0004_alter_user_username_opts	2025-10-21 22:36:35.650793-03
+13	auth	0005_alter_user_last_login_null	2025-10-21 22:36:35.685008-03
+14	auth	0006_require_contenttypes_0002	2025-10-21 22:36:35.686396-03
+15	auth	0007_alter_validators_add_error_messages	2025-10-21 22:36:35.781261-03
+16	auth	0008_alter_user_username_max_length	2025-10-21 22:36:35.844646-03
+17	auth	0009_alter_user_last_name_max_length	2025-10-21 22:36:35.857907-03
+18	auth	0010_alter_group_name_max_length	2025-10-21 22:36:35.875991-03
+19	auth	0011_update_proxy_permissions	2025-10-21 22:36:35.914968-03
+20	auth	0012_alter_user_first_name_max_length	2025-10-21 22:36:35.936848-03
+21	sessions	0001_initial	2025-10-21 22:36:35.969751-03
+22	aplicativo_web	0004_alter_solicitacaocoleta_options_and_more	2025-10-23 09:17:09.08681-03
+23	aplicativo_web	0005_alter_coletor_cpf_alter_produtor_cpf	2025-10-23 09:17:09.419653-03
+\.
+
+
+--
+-- TOC entry 5924 (class 0 OID 24640)
+-- Dependencies: 251
+-- Data for Name: django_session; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.django_session (session_key, session_data, expire_date) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5905 (class 0 OID 24488)
+-- Dependencies: 232
+-- Data for Name: item_solicitacao; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.item_solicitacao (id_item, id_solicitacao, quantidade, tipo_residuo, unidade_medida) FROM stdin;
+25	23	1.00	Plástico	VOLUME
+26	24	1.00	Metal	UN
+\.
+
+
+--
+-- TOC entry 5897 (class 0 OID 23270)
+-- Dependencies: 224
+-- Data for Name: produtor; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.produtor (id, nome, email, senha, telefone, cpf_cnpj, cep, rua, numero, bairro, cidade, estado, geom, nota_avaliacao_atual, total_avaliacoes, saldo_pontos) FROM stdin;
+3	Produtor 2	produtor2@gmail.com	teste	86 1234-5678	p2	64018030	Rua João Cabral	2163	Vermelha	Teresina	PI	0101000020E610000010A331A4D46745C0ECC1A4F8F86C14C0	5.00	8	0.00
+\.
+
+
+--
+-- TOC entry 5926 (class 0 OID 24674)
+-- Dependencies: 253
+-- Data for Name: recompensa; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.recompensa (id_recompensa, id_produtor, codigo_voucher, nome_premio, loja_parceira, status) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5903 (class 0 OID 23309)
+-- Dependencies: 230
+-- Data for Name: solicitacao_coleta; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.solicitacao_coleta (id, produtor_id, coletor_id, status, inicio_coleta, fim_coleta, observacoes, solicitacao, cooperativa_id) FROM stdin;
+23	3	2	AGUARDANDO	2025-11-24 12:15:00	2025-11-16 12:15:00	21:15	2025-11-24 12:15:54.50678	3
+24	3	1	CONFIRMADA	2025-11-25 09:22:00	2025-11-28 09:22:00		2025-11-24 09:22:50.230098	3
+\.
+
+
+--
+-- TOC entry 5631 (class 0 OID 22511)
+-- Dependencies: 219
+-- Data for Name: spatial_ref_sys; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.spatial_ref_sys (srid, auth_name, auth_srid, srtext, proj4text) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5942 (class 0 OID 0)
+-- Dependencies: 239
+-- Name: auth_group_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.auth_group_id_seq', 1, false);
+
+
+--
+-- TOC entry 5943 (class 0 OID 0)
+-- Dependencies: 241
+-- Name: auth_group_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
+
+
+--
+-- TOC entry 5944 (class 0 OID 0)
+-- Dependencies: 237
+-- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 44, true);
+
+
+--
+-- TOC entry 5945 (class 0 OID 0)
+-- Dependencies: 245
+-- Name: auth_user_groups_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.auth_user_groups_id_seq', 1, false);
+
+
+--
+-- TOC entry 5946 (class 0 OID 0)
+-- Dependencies: 243
+-- Name: auth_user_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.auth_user_id_seq', 1, false);
+
+
+--
+-- TOC entry 5947 (class 0 OID 0)
+-- Dependencies: 247
+-- Name: auth_user_user_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
+
+
+--
+-- TOC entry 5948 (class 0 OID 0)
+-- Dependencies: 225
+-- Name: coletor_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.coletor_id_seq', 2, true);
+
+
+--
+-- TOC entry 5949 (class 0 OID 0)
+-- Dependencies: 227
+-- Name: cooperativa_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.cooperativa_id_seq', 20, true);
+
+
+--
+-- TOC entry 5950 (class 0 OID 0)
+-- Dependencies: 254
+-- Name: cooperativa_material_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.cooperativa_material_id_seq', 5, true);
+
+
+--
+-- TOC entry 5951 (class 0 OID 0)
+-- Dependencies: 249
+-- Name: django_admin_log_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.django_admin_log_id_seq', 1, false);
+
+
+--
+-- TOC entry 5952 (class 0 OID 0)
+-- Dependencies: 235
+-- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 11, true);
+
+
+--
+-- TOC entry 5953 (class 0 OID 0)
+-- Dependencies: 233
+-- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 23, true);
+
+
+--
+-- TOC entry 5954 (class 0 OID 0)
+-- Dependencies: 231
+-- Name: item_solicitacao_id_item_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.item_solicitacao_id_item_seq', 26, true);
+
+
+--
+-- TOC entry 5955 (class 0 OID 0)
+-- Dependencies: 223
+-- Name: produtor_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.produtor_id_seq', 3, true);
+
+
+--
+-- TOC entry 5956 (class 0 OID 0)
+-- Dependencies: 252
+-- Name: recompensa_id_recompensa_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.recompensa_id_recompensa_seq', 1, false);
+
+
+--
+-- TOC entry 5957 (class 0 OID 0)
+-- Dependencies: 229
+-- Name: solicitacao_coleta_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.solicitacao_coleta_id_seq', 24, true);
 
 
 --
@@ -1237,11 +1665,11 @@ ALTER TABLE ONLY public.solicitacao_coleta
     ADD CONSTRAINT solicitacao_coleta_produtor_id_fkey FOREIGN KEY (produtor_id) REFERENCES public.produtor(id);
 
 
--- Completed on 2025-11-17 00:57:43
+-- Completed on 2025-11-23 21:27:36
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict EBJRaFTbajzwJIXumWEVgQCO7WZTWOkvTenvZKiWB37IfrLWgb6U52lL1vdtnpG
+\unrestrict 4vzhFf2M5jToG2HmQZZo7wE9ceL9cbpXwPJrdMeBVYsCQ2Gr95fFOwYtq3rOvcf
 
