@@ -16,6 +16,7 @@ from .views import (
     # escolha_cooperativa_view
     AvaliarProdutorView,
     ProdutorPerfilView,
+    AvaliarColetorView
 )
 
 urlpatterns = [
@@ -50,4 +51,6 @@ urlpatterns = [
     # path('list_cooperativas/', views.escolha_cooperativa_view, name='list-cooperativas'),
     path('avaliar/produtor/', AvaliarProdutorView.as_view(), name='avaliar-produtor'),
     path('produtor/perfil/', ProdutorPerfilView.as_view(), name='produtor-perfil'),
+    path("avaliar/produtor/", AvaliarProdutorView.as_view(), name="avaliar-produtor"),
+    path("avaliar/coletor/", AvaliarColetorView.as_view(), name="avaliar-coletor"),
 ]

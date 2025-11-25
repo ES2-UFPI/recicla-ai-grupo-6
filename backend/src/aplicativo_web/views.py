@@ -17,7 +17,7 @@ from .serializers import (
     ProdutorRegistrationSerializer, ColetorRegistrationSerializer,
     CooperativaRegistrationSerializer, LoginSerializer,
     SolicitacaoColetaCreateSerializer, SolicitacaoColetaListSerializer,
-    SolicitacaoColetaDetailSerializer
+    SolicitacaoColetaDetailSerializer, AvaliacaoColetorSerializer
 )
 from .serializers import CooperativaMaterialSerializer
 from .models import Produtor, Coletor, Cooperativa, SolicitacaoColeta
@@ -646,3 +646,21 @@ class ProdutorPerfilView(APIView):
             })
         except Produtor.DoesNotExist:
             return Response({'detail': 'Produtor não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        
+
+class AvaliarColetorView(APIView):
+    """
+    Endpoint: POST /api/avaliar/coletor/
+    Segue o mesmo padrão de AvaliarProdutor: não usa autenticação aqui,
+    apenas valida a coleta e atualiza a média do coletor.
+    """
+
+    def post(self, request, *args, **kwargs):
+        serializer = AvaliacaoColetorSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {"detail": "Avaliação do coletor registrada com sucesso."},
+            status=status.HTTP_200_OK,
+        )
