@@ -15,6 +15,7 @@ import CooperativaDashboard from './components/CooperativaDashboard'; // <<< NOV
 import ProdutorSolicitacoes from './components/ProdutorSolicitacoes';
 import ColetorInventario from './components/ColetorInventario';
 import 'leaflet/dist/leaflet.css'; // Importa o CSS base do Leaflet
+import ProdutorAvaliacoes from './components/ProdutorAvaliacoes';
 
 // Definindo os tipos para nosso estado de login
 type User = {
@@ -51,6 +52,7 @@ function App() {
             <>
               <Route path="/" element={<ProdutorHome />} />
               <Route path="/minhas-solicitacoes" element={<ProdutorSolicitacoes />} />
+              <Route path="/minhas-avaliacoes" element={<ProdutorAvaliacoes />} />
               {/* Outras futuras rotas do produtor viriam aqui */}
             </>
           )}
